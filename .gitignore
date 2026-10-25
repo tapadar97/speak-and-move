@@ -1,0 +1,7 @@
+node_modules
+dist
+artifact.html
+# Personal planning notes stay local
+brief.md
+directions.md
+kill-log.md
