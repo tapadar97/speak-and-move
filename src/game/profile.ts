@@ -47,6 +47,8 @@ export interface Profile {
   daily: { day: string; count: number };
   /** Days in a row the daily goal was met. */
   streak: { last: string | null; days: number };
+  /** Every day the daily goal was met (for the week row). */
+  goalDays: string[];
   /** Stats before the latest weekly re-check, to show progress. */
   prevStats: Stats | null;
   sound: boolean;
@@ -74,6 +76,7 @@ export const NEW_PROFILE: Profile = {
   packDone: { 1: false, 2: false },
   daily: { day: '', count: 0 },
   streak: { last: null, days: 0 },
+  goalDays: [],
   prevStats: null,
   sound: true,
   bangla: true,
@@ -124,14 +127,15 @@ export const DAILY_GOAL = 10;
 export const RECHECK_DAYS = 7;
 
 /** Count one good answer toward today's goal; meeting the goal extends the streak. */
-export function countGood(p: Profile, day: string): Pick<Profile, 'daily' | 'streak'> & { goalJustMet: boolean } {
+export function countGood(p: Profile, day: string): Pick<Profile, 'daily' | 'streak' | 'goalDays'> & { goalJustMet: boolean } {
   const count = (p.daily.day === day ? p.daily.count : 0) + 1;
   const goalJustMet = count === DAILY_GOAL;
   let streak = p.streak;
   if (goalJustMet && p.streak.last !== day) {
     streak = { last: day, days: p.streak.last === addDays(day, -1) ? p.streak.days + 1 : 1 };
   }
-  return { daily: { day, count }, streak, goalJustMet };
+  const goalDays = goalJustMet && !p.goalDays.includes(day) ? [...p.goalDays.slice(-60), day] : p.goalDays;
+  return { daily: { day, count }, streak, goalDays, goalJustMet };
 }
 
 /** The streak as it stands today: 0 once a whole day was missed. */
@@ -144,3 +148,10 @@ export const goodToday = (p: Profile, day: string) => (p.daily.day === day ? p.d
 
 /** The weekly level check is ready a week after the last one. */
 export const recheckDue = (p: Profile, day: string) => !!p.firstDayDate && addDays(p.firstDayDate, RECHECK_DAYS) <= day;
+
+/** The 7 days (Monday first) of the week containing `day`. */
+export function weekDays(day: string): string[] {
+  const d = new Date(Date.parse(`${day}T12:00:00Z`));
+  const monday = addDays(day, -((d.getUTCDay() + 6) % 7));
+  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+}

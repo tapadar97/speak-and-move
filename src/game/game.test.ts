@@ -10,7 +10,7 @@ import { grow, rankIndex, typeWeights, weakest, type Stats } from './stats';
 import { WORLDS } from './worlds';
 import { PACKS, REPLIES, SITUATIONS, WHY } from './learning';
 import { afterAnswer, dueRepeat, expected, gapIndexes, gapText, modeFor, scheduleRepeat, stepOf } from './mastery';
-import { DAILY_GOAL, countGood, liveStreak, recheckDue } from './profile';
+import { DAILY_GOAL, countGood, liveStreak, recheckDue, weekDays } from './profile';
 
 const WORLD_IDS: WorldId[] = [1, 2];
 
@@ -338,7 +338,12 @@ describe('daily goal, streak and re-check', () => {
     const day2 = '2026-10-27';
     for (let i = 0; i < DAILY_GOAL; i++) p = { ...p, ...countGood(p, day2) };
     expect(p.streak.days).toBe(2);
+    expect(p.goalDays).toEqual([day1, day2]);
     expect(liveStreak(p, '2026-10-29')).toBe(0);
+  });
+
+  it('the week row runs Monday to Sunday', () => {
+    expect(weekDays('2026-10-29')).toEqual(['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01']);
   });
 
   it('the weekly check is due 7 days after the last one', () => {

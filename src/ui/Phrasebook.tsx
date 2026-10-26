@@ -11,7 +11,7 @@ interface Props {
   bangla: boolean;
   startWorld: WorldId;
   onPractise: (ids: string[]) => void;
-  onExit: () => void;
+  onExit?: () => void;
 }
 
 /** Every phrase with its mastery stars, weakest first, so you can see what you know. */
@@ -25,9 +25,11 @@ export function Phrasebook({ mastery, bangla, startWorld, onPractise, onExit }: 
   return (
     <div className="screen book-screen">
       <header className="review__head">
-        <button type="button" className="icon-btn" onClick={onExit} aria-label="Back to the map">
-          ←
-        </button>
+        {onExit && (
+          <button type="button" className="icon-btn" onClick={onExit} aria-label="Back">
+            ←
+          </button>
+        )}
         <div>
           <h1 className="display book-title">Phrasebook</h1>
           <p className="review__why">

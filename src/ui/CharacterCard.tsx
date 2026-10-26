@@ -11,9 +11,12 @@ interface Props {
   outfits: string[];
   onStart: () => void;
   onRetake?: () => void;
+  /** Shown as the Progress tab (no back button). */
+  inTab?: boolean;
+  onSettings?: () => void;
 }
 
-export function CharacterCard({ stats, before, name, mode, bangla, outfits, onStart, onRetake }: Props) {
+export function CharacterCard({ stats, before, name, mode, bangla, outfits, onStart, onRetake, inTab = false, onSettings }: Props) {
   const rank = rankIndex(stats);
   const weak = weakest(stats);
   const quest = QUESTS[weak];
@@ -25,6 +28,12 @@ export function CharacterCard({ stats, before, name, mode, bangla, outfits, onSt
         <div className="street" />
       </div>
       {mode === 'result' && <div className="confetti" aria-hidden="true" />}
+      {inTab && (
+        <header className="page-head">
+          <h1 className="page-title">Progress</h1>
+          <p className="page-sub">Your level, your five skills, and what to work on next.</p>
+        </header>
+      )}
 
       <section className="player-card" aria-label="Your player card">
         <div className="player-card__hero">
@@ -95,12 +104,19 @@ export function CharacterCard({ stats, before, name, mode, bangla, outfits, onSt
         </div>
       </section>
 
-      <button type="button" className="btn btn--go btn--big" onClick={onStart}>
-        {mode === 'result' ? 'Start your journey' : 'Back to the map'}
-      </button>
+      {inTab ? null : (
+        <button type="button" className="btn btn--go btn--big" onClick={onStart}>
+          {mode === 'result' ? 'Start your journey' : 'Back to your journey'}
+        </button>
+      )}
       {onRetake && (
         <button type="button" className="link-btn link-btn--light" onClick={onRetake}>
           Replay First Day to update your card
+        </button>
+      )}
+      {onSettings && (
+        <button type="button" className="link-btn" onClick={onSettings}>
+          Settings and title screen
         </button>
       )}
     </div>

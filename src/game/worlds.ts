@@ -4,6 +4,9 @@ export interface WorldInfo {
   id: 1 | 2 | 3 | 4 | 5;
   name: string;
   icon: string;
+  /** The level's goal, shown under its badge. */
+  goal?: string;
+  about?: string;
   /** Background art for the board's center. */
   art: string;
   playable: boolean;
@@ -21,6 +24,8 @@ export const WORLDS: WorldInfo[] = [
     id: 1,
     name: 'Bodega Block',
     icon: '🥯',
+    goal: 'Order like a New Yorker',
+    about: 'The phrases you need at the deli, pharmacy, laundromat, doctor and on the street.',
     art: 'board-city-1',
     playable: true,
     layout: [
@@ -36,6 +41,8 @@ export const WORLDS: WorldInfo[] = [
     id: 2,
     name: 'The Subway',
     icon: '🚇',
+    goal: 'Ride the subway with confidence',
+    about: 'Tickets, platforms, trains, transfers, exits and buses.',
     art: 'board-city-2',
     playable: true,
     layout: [

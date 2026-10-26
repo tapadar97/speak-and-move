@@ -1,0 +1,207 @@
+import { useState } from 'react';
+import { BOSSES } from '../game/bosses';
+import { CARDS, type WorldId } from '../game/cards';
+import { MAX_STEP, stepOf } from '../game/mastery';
+import { DAILY_GOAL, goodToday, isUnlocked, liveStreak, recheckDue, weekDays, type Profile } from '../game/profile';
+import { dueItems } from '../game/review';
+import { WORLDS, isPlayable } from '../game/worlds';
+import { Art, PlayerArt } from './kit';
+
+interface Props {
+  profile: Profile;
+  rank: number;
+  current: WorldId;
+  day: string;
+  onLearn: (w: WorldId) => void;
+  onRace: (w: WorldId) => void;
+  onBoss: (w: WorldId) => void;
+  onReview: () => void;
+  onRecheck: () => void;
+  onProfile: () => void;
+}
+
+const DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+/** How far through a world's phrases you are: average mastery, 0–100. */
+export function worldPercent(p: Profile, w: WorldId): number {
+  const cards = CARDS.filter((c) => c.world === w);
+  const total = cards.reduce((t, c) => t + stepOf(p.mastery, c.id), 0);
+  return Math.round((total / (cards.length * MAX_STEP)) * 100);
+}
+
+interface TileProps {
+  label: string;
+  art: React.ReactNode;
+  tone: 'sun' | 'sky' | 'coral' | 'lilac' | 'mint';
+  state?: 'done' | 'locked' | 'next' | null;
+  badge?: string;
+  onClick?: () => void;
+}
+
+function Tile({ label, art, tone, state = null, badge, onClick }: TileProps) {
+  const locked = state === 'locked';
+  return (
+    <button type="button" className={`tile ${state ? `is-${state}` : ''}`} onClick={locked ? undefined : onClick} disabled={locked}>
+      <span className={`tile__art tile__art--${tone}`}>
+        {art}
+        {state === 'done' && (
+          <span className="tile__check" aria-label="Done">
+            ✓
+          </span>
+        )}
+        {locked && (
+          <span className="tile__lock" aria-label="Locked">
+            🔒
+          </span>
+        )}
+        {badge && <span className="tile__badge">{badge}</span>}
+        {state === 'next' && <span className="tile__next">START</span>}
+      </span>
+      <span className="tile__label">{label}</span>
+    </button>
+  );
+}
+
+export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, onReview, onRecheck, onProfile }: Props) {
+  const [world, setWorld] = useState<WorldId>(current);
+  const [picking, setPicking] = useState(false);
+  const info = WORLDS[world - 1];
+  const prog = profile.worlds[world];
+  const boss = BOSSES[world];
+  const pct = worldPercent(profile, world);
+  const streak = liveStreak(profile, day);
+  const good = goodToday(profile, day);
+  const due = dueItems(profile.review, day).length;
+  const packDone = profile.packDone[world];
+  const raceDone = prog.raceWins > 0;
+  const bossDone = prog.stars > 0;
+  // The single next step is marked START, like a lesson path.
+  const next = !packDone ? 'learn' : !raceDone ? 'race' : !bossDone ? 'boss' : null;
+
+  return (
+    <div className="screen journey">
+      <header className="j-top">
+        <div className="j-top__left">
+          <button type="button" className="j-world" onClick={() => setPicking(true)} aria-haspopup="dialog">
+            {info.name}
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+          </button>
+          <div className="j-progress" aria-label={`${pct}% of ${info.name} mastered`}>
+            <span className="j-progress__bar">
+              <span style={{ width: `${Math.max(pct, 3)}%` }} />
+            </span>
+            <span className="j-progress__pct">{pct}%</span>
+          </div>
+        </div>
+        <span className="j-streak" aria-label={`${streak} day streak`}>
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-4-1-6 1-9z" fill="#ff5a36" />
+          </svg>
+          {streak}
+        </span>
+        <button type="button" className="j-avatar" onClick={onProfile} aria-label="Your progress">
+          <PlayerArt pose="avatar" />
+        </button>
+      </header>
+
+      <ol className="week" aria-label={`This week: ${good} of ${DAILY_GOAL} good answers today`}>
+        {weekDays(day).map((d, i) => {
+          const done = profile.goalDays.includes(d);
+          const isToday = d === day;
+          return (
+            <li key={d} className={`week__day ${done ? 'is-done' : ''} ${isToday ? 'is-today' : ''}`}>
+              <span
+                className="week__dot"
+                style={isToday && !done ? { ['--p' as string]: Math.min(1, good / DAILY_GOAL) } : undefined}
+              >
+                {done ? '✓' : ''}
+              </span>
+              <span className="week__name">{DAY_NAMES[i]}</span>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="week__note">
+        {good >= DAILY_GOAL ? 'Daily goal done. See you tomorrow!' : `Today: ${good} of ${DAILY_GOAL} good answers`}
+      </p>
+
+      <section className="level">
+        <div className="level__art">
+          <Art name={info.art} fallback={info.icon} className="level__img" />
+          <span className="level__badge">WORLD {world}</span>
+        </div>
+        <h1 className="level__title">{info.goal}</h1>
+        <p className="level__about">{info.about}</p>
+      </section>
+
+      <div className="tiles">
+        <Tile
+          label="Learn 8 phrases"
+          tone="sun"
+          art={<span className="tile__emoji">📒</span>}
+          state={packDone ? 'done' : next === 'learn' ? 'next' : null}
+          onClick={() => onLearn(world)}
+        />
+        <Tile
+          label="Race Maya"
+          tone="sky"
+          art={<Art name="maya" fallback="🏁" className="tile__img" />}
+          state={!packDone ? 'locked' : raceDone ? 'done' : next === 'race' ? 'next' : null}
+          badge={prog.raceWins > 1 ? `×${prog.raceWins}` : undefined}
+          onClick={() => onRace(world)}
+        />
+        <Tile
+          label={`Beat ${boss.name}`}
+          tone="coral"
+          art={<Art name={boss.art} fallback={boss.icon} className="tile__img" />}
+          state={!raceDone ? 'locked' : bossDone ? 'done' : next === 'boss' ? 'next' : null}
+          badge={bossDone ? '★'.repeat(prog.stars) : undefined}
+          onClick={() => onBoss(world)}
+        />
+        <Tile
+          label={due ? `Review (${due})` : 'Review'}
+          tone="lilac"
+          art={<span className="tile__emoji">🔁</span>}
+          state={due ? null : 'locked'}
+          onClick={onReview}
+        />
+        {recheckDue(profile, day) && (
+          <Tile label="Weekly check-up" tone="mint" art={<span className="tile__emoji">📈</span>} state="next" onClick={onRecheck} />
+        )}
+      </div>
+      {due === 0 && <p className="week__note">Review opens when a missed phrase is due.</p>}
+
+      {picking && (
+        <div className="sheet-backdrop" onClick={() => setPicking(false)}>
+          <div className="small-sheet" role="dialog" aria-modal="true" aria-labelledby="pick-world" onClick={(e) => e.stopPropagation()}>
+            <h2 id="pick-world">Your worlds</h2>
+            {WORLDS.map((w) => {
+              const id = w.id as WorldId;
+              const playable = isPlayable(w.id);
+              const open = playable && isUnlocked(profile, id, rank);
+              return (
+                <button
+                  key={w.id}
+                  type="button"
+                  className={`setting ${world === w.id ? 'is-on' : ''}`}
+                  disabled={!open}
+                  onClick={() => {
+                    setWorld(id);
+                    setPicking(false);
+                  }}
+                >
+                  <span>
+                    {w.icon} {w.name}
+                  </span>
+                  <span className="setting__state">{!playable ? 'Soon' : !open ? '🔒' : `${worldPercent(profile, id)}%`}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

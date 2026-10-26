@@ -13,7 +13,9 @@ import { CharacterCard } from './CharacterCard';
 import { FirstDay } from './FirstDay';
 import { Game, type RaceSummary } from './Game';
 import { PlayerContext } from './kit';
-import { MapScreen } from './MapScreen';
+import { Journey } from './Journey';
+import { Missions } from './Missions';
+import { TabBar, type Tab } from './TabBar';
 import { PhrasePack } from './PhrasePack';
 import { Phrasebook } from './Phrasebook';
 import { PickPlayer } from './PickPlayer';
@@ -26,13 +28,12 @@ type Screen =
   | { name: 'pick'; then: 'play' | 'title' }
   | { name: 'firstday' }
   | { name: 'card'; mode: 'result' | 'view' }
-  | { name: 'map' }
+  | { name: 'tab'; tab: Tab }
   | { name: 'race'; world: WorldId; key: number }
   | { name: 'boss'; world: WorldId; key: number }
   | { name: 'victory'; world: WorldId; stars: number; firstClear: boolean; before: Stats | null; after: Stats | null }
   | { name: 'review'; ids: string[]; title?: string; why?: string }
-  | { name: 'pack'; world: WorldId }
-  | { name: 'book' };
+  | { name: 'pack'; world: WorldId };
 
 /** A phrase you said right, to use in real life; any easy card of the world if none. */
 function pickMission(world: WorldId, said: string[]): string {
@@ -58,7 +59,7 @@ export function App() {
   /** A good (first-try) answer counts toward the daily goal; meeting it pays 30 coins. */
   const goodAnswer = (p: Profile): Profile => {
     const g = countGood(p, day);
-    return { ...p, daily: g.daily, streak: g.streak, coins: p.coins + (g.goalJustMet ? 30 : 0) };
+    return { ...p, daily: g.daily, streak: g.streak, goalDays: g.goalDays, coins: p.coins + (g.goalJustMet ? 30 : 0) };
   };
 
   /** One answered card anywhere: mastery, stats, review deck and daily goal. */
@@ -72,6 +73,21 @@ export function App() {
     if (firstTry) next = goodAnswer(next);
     return next;
   };
+
+  /** The ▶ button: the next step in your current world (learn → race → boss → race again). */
+  const playNext = () => {
+    const w = currentWorld(profile, rank);
+    if (!profile.packDone[w]) setScreen({ name: 'pack', world: w });
+    else if (profile.worlds[w].raceWins > 0 && profile.worlds[w].stars === 0) boss(w);
+    else race(w);
+  };
+
+  const withTabs = (tab: Tab, page: React.ReactNode) => (
+    <>
+      {page}
+      <TabBar active={tab} missionBadge={!!profile.mission} onTab={(t) => setScreen({ name: 'tab', tab: t })} onPlay={playNext} />
+    </>
+  );
 
   /** The card level matched to your rank, marked "Your level" in races. */
   const yourLevel: Level = rank <= 0 ? 1 : rank <= 2 ? 2 : 3;
@@ -102,7 +118,7 @@ export function App() {
             sound={profile.sound}
             bangla={profile.bangla}
             onPlay={() =>
-              setScreen(!profile.player ? { name: 'pick', then: 'play' } : profile.stats ? { name: 'map' } : { name: 'firstday' })
+              setScreen(!profile.player ? { name: 'pick', then: 'play' } : profile.stats ? { name: 'tab', tab: 'journey' } : { name: 'firstday' })
             }
             onToggle={(k) => update((p) => ({ ...p, [k]: !p[k] }))}
             onChangePlayer={() => setScreen({ name: 'pick', then: 'title' })}
@@ -117,7 +133,7 @@ export function App() {
             bangla={profile.bangla}
             onDone={(player, name) => {
               update((p) => ({ ...p, player, name }));
-              setScreen(screen.then === 'title' ? { name: 'title' } : profile.stats ? { name: 'map' } : { name: 'firstday' });
+              setScreen(screen.then === 'title' ? { name: 'title' } : profile.stats ? { name: 'tab', tab: 'journey' } : { name: 'firstday' });
             }}
             onBack={() => setScreen({ name: 'title' })}
           />
@@ -132,7 +148,7 @@ export function App() {
               update((p) => ({ ...p, prevStats: p.stats ?? p.prevStats, stats: scoreFirstDay(results), firstDayDate: day }));
               setScreen({ name: 'card', mode: 'result' });
             }}
-            onExit={() => setScreen(profile.stats ? { name: 'map' } : { name: 'title' })}
+            onExit={() => setScreen(profile.stats ? { name: 'tab', tab: 'journey' } : { name: 'title' })}
           />
         );
 
@@ -145,25 +161,62 @@ export function App() {
             mode={screen.mode}
             bangla={profile.bangla}
             outfits={profile.outfits}
-            onStart={() => setScreen({ name: 'map' })}
+            onStart={() => setScreen({ name: 'tab', tab: 'journey' })}
             onRetake={screen.mode === 'view' ? () => setScreen({ name: 'firstday' }) : undefined}
           />
         );
 
-      case 'map':
-        return (
-          <MapScreen
+      case 'tab': {
+        if (screen.tab === 'journey') {
+          return withTabs(
+            'journey',
+            <Journey
+              profile={profile}
+              rank={rank}
+              current={currentWorld(profile, rank)}
+              day={day}
+              onLearn={(w) => setScreen({ name: 'pack', world: w })}
+              onRace={race}
+              onBoss={boss}
+              onReview={() => setScreen({ name: 'review', ids: dueItems(profile.review, day).map((i) => i.cardId) })}
+              onRecheck={() => setScreen({ name: 'firstday' })}
+              onProfile={() => setScreen({ name: 'tab', tab: 'progress' })}
+            />,
+          );
+        }
+        if (screen.tab === 'phrases') {
+          return withTabs(
+            'phrases',
+            <Phrasebook
+              mastery={profile.mastery}
+              bangla={profile.bangla}
+              startWorld={currentWorld(profile, rank)}
+              onPractise={(ids) => setScreen({ name: 'review', ids, title: 'Practice', why: 'Get it right first time to move it up a star.' })}
+            />,
+          );
+        }
+        if (screen.tab === 'progress') {
+          return withTabs(
+            'progress',
+            <CharacterCard
+              stats={profile.stats!}
+              before={profile.prevStats}
+              name={profile.name}
+              mode="view"
+              inTab
+              bangla={profile.bangla}
+              outfits={profile.outfits}
+              onStart={() => setScreen({ name: 'tab', tab: 'journey' })}
+              onRetake={() => setScreen({ name: 'firstday' })}
+              onSettings={() => setScreen({ name: 'title' })}
+            />,
+          );
+        }
+        return withTabs(
+          'missions',
+          <Missions
             profile={profile}
-            rank={rank}
-            current={currentWorld(profile, rank)}
-            day={day}
-            onRace={race}
-            onBoss={boss}
-            onCard={() => setScreen({ name: 'card', mode: 'view' })}
-            onReview={() => setScreen({ name: 'review', ids: dueItems(profile.review, day).map((i) => i.cardId) })}
-            onBook={() => setScreen({ name: 'book' })}
-            onLearn={(w) => setScreen({ name: 'pack', world: w })}
-            onRecheck={() => setScreen({ name: 'firstday' })}
+            bangla={profile.bangla}
             onMission={(how) =>
               update((p) => {
                 const id = p.mission!.cardId;
@@ -180,9 +233,9 @@ export function App() {
                 };
               })
             }
-            onTitle={() => setScreen({ name: 'title' })}
-          />
+          />,
         );
+      }
 
       case 'race': {
         const w = screen.world;
@@ -214,7 +267,7 @@ export function App() {
             }
             onBoss={() => boss(w)}
             onRematch={() => race(w)}
-            onExit={() => setScreen({ name: 'map' })}
+            onExit={() => setScreen({ name: 'tab', tab: 'journey' })}
           />
         );
       }
@@ -250,7 +303,7 @@ export function App() {
               }));
               setScreen({ name: 'victory', world: w, stars, firstClear, before, after });
             }}
-            onExit={() => setScreen({ name: 'map' })}
+            onExit={() => setScreen({ name: 'tab', tab: 'journey' })}
           />
         );
       }
@@ -268,7 +321,7 @@ export function App() {
             missionCardId={profile.mission?.cardId ?? null}
             bangla={profile.bangla}
             onNext={() => (profile.packDone[next] ? race(next) : setScreen({ name: 'pack', world: next }))}
-            onHome={() => setScreen({ name: 'map' })}
+            onHome={() => setScreen({ name: 'tab', tab: 'journey' })}
           />
         );
       }
@@ -289,7 +342,7 @@ export function App() {
                 return p.review[card.id] ? { ...next, review: reviewed(p.review, card.id, firstTry, day) } : next;
               })
             }
-            onExit={() => setScreen(screen.title === 'Practice' ? { name: 'book' } : { name: 'map' })}
+            onExit={() => setScreen(screen.title === 'Practice' ? { name: 'tab', tab: 'phrases' } : { name: 'tab', tab: 'journey' })}
           />
         );
 
@@ -312,22 +365,10 @@ export function App() {
               update((p) => ({ ...p, packDone: { ...p.packDone, [w]: true } }));
               race(w);
             }}
-            onExit={() => setScreen({ name: 'map' })}
+            onExit={() => setScreen({ name: 'tab', tab: 'journey' })}
           />
         );
 
-      case 'book':
-        return (
-          <Phrasebook
-            mastery={profile.mastery}
-            bangla={profile.bangla}
-            startWorld={currentWorld(profile, rank)}
-            onPractise={(ids) =>
-              setScreen({ name: 'review', ids, title: 'Practice', why: 'Get it right first time to move it up a star.' })
-            }
-            onExit={() => setScreen({ name: 'map' })}
-          />
-        );
     }
   }
 }
