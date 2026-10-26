@@ -1,4 +1,7 @@
-export type Place = 'deli' | 'subway' | 'pharmacy' | 'laundromat' | 'doctor' | 'street';
+export type Place =
+  | 'deli' | 'subway' | 'pharmacy' | 'laundromat' | 'doctor' | 'street'
+  | 'turnstile' | 'platform' | 'train' | 'transfer' | 'exit' | 'bus';
+export type WorldId = 1 | 2;
 export type Level = 1 | 2 | 3;
 /**
  * say    – read the English out loud
@@ -10,6 +13,7 @@ export type CardType = 'say' | 'listen' | 'fix' | 'recall';
 
 export interface Card {
   id: string;
+  world: WorldId;
   place: Place;
   level: Level;
   type: CardType;
@@ -30,6 +34,12 @@ export const PLACES: Record<Place, { name: string; icon: string }> = {
   laundromat: { name: 'Laundromat', icon: '🧺' },
   doctor: { name: 'Doctor', icon: '🩺' },
   street: { name: 'Street', icon: '🚕' },
+  turnstile: { name: 'Turnstile', icon: '🎫' },
+  platform: { name: 'Platform', icon: '🚉' },
+  train: { name: 'Train', icon: '🚇' },
+  transfer: { name: 'Transfer', icon: '🔀' },
+  exit: { name: 'Exit', icon: '🪜' },
+  bus: { name: 'Bus', icon: '🚌' },
 };
 
 export const STEPS: Record<Level, number> = { 1: 1, 2: 2, 3: 3 };
@@ -41,7 +51,7 @@ export const TYPE_NAME: Record<CardType, string> = {
   recall: 'From Bangla',
 };
 
-export const CARDS: Card[] = [
+const WORLD_1: Omit<Card, 'world'>[] = [
   // Deli
   { id: 'deli-1', place: 'deli', level: 1, type: 'say', target: 'Can I get a coffee, please?', accept: ['Can I have a coffee please'], bn: 'আমাকে একটা কফি দিতে পারবেন?' },
   { id: 'deli-2', place: 'deli', level: 1, type: 'say', target: 'How much is this?', bn: 'এটার দাম কত?' },
@@ -96,6 +106,67 @@ export const CARDS: Card[] = [
   { id: 'street-5', place: 'street', level: 2, type: 'say', target: 'Nice weather today, right?', bn: 'আজকের আবহাওয়াটা সুন্দর, তাই না?' },
   { id: 'street-6', place: 'street', level: 3, type: 'recall', prompt: 'Tell someone you are new in the neighborhood.', target: 'I just moved to the neighborhood.', accept: ["I'm new in the neighborhood", 'I just moved here'], bn: 'আমি এই এলাকায় নতুন এসেছি।' },
   { id: 'street-7', place: 'street', level: 3, type: 'listen', target: "It's right across the street from the bank.", bn: 'ব্যাংকের ঠিক উল্টো দিকে।' },
+];
+
+const WORLD_2: Omit<Card, 'world'>[] = [
+  // Turnstile
+  { id: 'turnstile-1', place: 'turnstile', level: 1, type: 'say', target: 'How much is one ride?', bn: 'এক রাইডের ভাড়া কত?' },
+  { id: 'turnstile-2', place: 'turnstile', level: 1, type: 'say', target: "My card isn't working.", accept: ['My card is not working', "My card doesn't work"], bn: 'আমার কার্ড কাজ করছে না।' },
+  { id: 'turnstile-3', place: 'turnstile', level: 2, type: 'fix', prompt: 'Where I can add money on my card?', target: 'Where can I add money to my card?', accept: ['Where can I put money on my card'], bn: 'কার্ডে টাকা কোথায় ভরতে পারি?' },
+  { id: 'turnstile-4', place: 'turnstile', level: 2, type: 'listen', target: 'Please swipe again at this turnstile.', bn: 'এই টার্নস্টাইলে আবার সোয়াইপ করুন।' },
+  { id: 'turnstile-5', place: 'turnstile', level: 2, type: 'say', target: 'Can I pay with my phone here?', bn: 'এখানে কি ফোন দিয়ে পে করতে পারি?' },
+  { id: 'turnstile-6', place: 'turnstile', level: 3, type: 'recall', prompt: 'Tell the station agent the machine took your money.', target: "The machine took my money but didn't give me a card.", accept: ["The machine took my money and didn't give me a card"], bn: 'মেশিন আমার টাকা নিয়েছে কিন্তু কার্ড দেয়নি।' },
+  { id: 'turnstile-7', place: 'turnstile', level: 3, type: 'listen', target: 'Go to the booth, they can give you a refund.', bn: 'বুথে যান, ওরা টাকা ফেরত দিতে পারবে।' },
+
+  // Platform
+  { id: 'platform-1', place: 'platform', level: 1, type: 'say', target: 'Which side is uptown?', bn: 'আপটাউন কোন দিকে?' },
+  { id: 'platform-2', place: 'platform', level: 1, type: 'say', target: 'Is the train coming soon?', bn: 'ট্রেন কি শিগগির আসছে?' },
+  { id: 'platform-3', place: 'platform', level: 2, type: 'listen', target: 'The next uptown train is two stops away.', bn: 'পরের আপটাউন ট্রেন দুই স্টপ দূরে।' },
+  { id: 'platform-4', place: 'platform', level: 2, type: 'fix', prompt: 'This train go to Brooklyn?', target: 'Does this train go to Brooklyn?', bn: 'এই ট্রেন কি ব্রুকলিন যায়?' },
+  { id: 'platform-5', place: 'platform', level: 2, type: 'say', target: 'Excuse me, is this the right platform?', bn: 'মাফ করবেন, এটা কি ঠিক প্ল্যাটফর্ম?' },
+  { id: 'platform-6', place: 'platform', level: 3, type: 'listen', target: 'Due to signal problems, trains are running with delays.', bn: 'সিগন্যাল সমস্যার কারণে ট্রেন দেরিতে চলছে।' },
+  { id: 'platform-7', place: 'platform', level: 3, type: 'recall', prompt: 'Ask how long the delay will be.', target: 'How long will the delay be?', accept: ['How long is the delay', 'How long will we have to wait'], bn: 'দেরি কতক্ষণ হবে?' },
+
+  // Train
+  { id: 'train-1', place: 'train', level: 1, type: 'say', target: 'Is this seat free?', accept: ['Is this seat taken'], bn: 'এই সিটটা কি খালি?' },
+  { id: 'train-2', place: 'train', level: 1, type: 'say', target: 'Sorry, can I get by?', accept: ['Excuse me can I get by'], bn: 'মাফ করবেন, একটু যেতে দেবেন?' },
+  { id: 'train-3', place: 'train', level: 2, type: 'listen', target: 'This is an express train. Next stop, Union Square.', bn: 'এটা এক্সপ্রেস ট্রেন। পরের স্টপ ইউনিয়ন স্কয়ার।' },
+  { id: 'train-4', place: 'train', level: 2, type: 'fix', prompt: 'I need get off at the next stop.', target: 'I need to get off at the next stop.', bn: 'আমাকে পরের স্টপে নামতে হবে।' },
+  { id: 'train-5', place: 'train', level: 2, type: 'say', target: 'Does this train stop at Union Square?', bn: 'এই ট্রেন কি ইউনিয়ন স্কয়ারে থামে?' },
+  { id: 'train-6', place: 'train', level: 3, type: 'recall', prompt: 'Ask a passenger how many stops are left to Union Square.', target: 'How many stops is it to Union Square?', accept: ['How many more stops to Union Square', 'How many stops until Union Square'], bn: 'ইউনিয়ন স্কয়ার আর কয় স্টপ?' },
+  { id: 'train-7', place: 'train', level: 3, type: 'listen', target: 'We are being held momentarily by the train dispatcher.', bn: 'ট্রেন কন্ট্রোলের নির্দেশে আমরা কিছুক্ষণ থেমে আছি।' },
+
+  // Transfer
+  { id: 'transfer-1', place: 'transfer', level: 1, type: 'say', target: 'Where is the exit?', bn: 'বের হওয়ার পথ কোথায়?' },
+  { id: 'transfer-2', place: 'transfer', level: 1, type: 'say', target: 'Where do I change trains?', bn: 'ট্রেন কোথায় বদলাব?' },
+  { id: 'transfer-3', place: 'transfer', level: 2, type: 'listen', target: 'Transfer here for the four, five and six trains.', bn: '৪, ৫ আর ৬ নম্বর ট্রেনের জন্য এখানে বদল করুন।' },
+  { id: 'transfer-4', place: 'transfer', level: 2, type: 'fix', prompt: 'Which way I go for the L train?', target: 'Which way do I go for the L train?', bn: 'এল ট্রেনের জন্য কোন দিকে যাব?' },
+  { id: 'transfer-5', place: 'transfer', level: 2, type: 'say', target: 'Can I transfer for free here?', bn: 'এখানে কি ফ্রিতে ট্রেন বদলানো যায়?' },
+  { id: 'transfer-6', place: 'transfer', level: 3, type: 'recall', prompt: 'Ask if you need to leave the station to transfer.', target: 'Do I have to leave the station to transfer?', accept: ['Do I need to leave the station to transfer'], bn: 'ট্রেন বদলাতে কি স্টেশন থেকে বের হতে হবে?' },
+  { id: 'transfer-7', place: 'transfer', level: 3, type: 'listen', target: 'Follow the signs and take the stairs to the downtown platform.', bn: 'সাইন দেখে সিঁড়ি দিয়ে ডাউনটাউন প্ল্যাটফর্মে যান।' },
+
+  // Street exit
+  { id: 'exit-1', place: 'exit', level: 1, type: 'say', target: 'Which exit for the park?', bn: 'পার্কের জন্য কোন এক্সিট?' },
+  { id: 'exit-2', place: 'exit', level: 1, type: 'say', target: 'Is the museum near here?', bn: 'জাদুঘরটা কি কাছে?' },
+  { id: 'exit-3', place: 'exit', level: 2, type: 'listen', target: 'Take the exit on the right and walk two blocks.', bn: 'ডান দিকের এক্সিট নিয়ে দুই ব্লক হাঁটুন।' },
+  { id: 'exit-4', place: 'exit', level: 2, type: 'fix', prompt: 'How I get to the library?', target: 'How do I get to the library?', bn: 'লাইব্রেরিতে কীভাবে যাব?' },
+  { id: 'exit-5', place: 'exit', level: 2, type: 'say', target: 'Is it walking distance from here?', bn: 'এখান থেকে কি হেঁটে যাওয়া যায়?' },
+  { id: 'exit-6', place: 'exit', level: 3, type: 'recall', prompt: "Tell someone you're lost and ask for help.", target: "Sorry, I'm lost. Can you help me find this address?", accept: ["Excuse me I'm lost can you help me find this address"], bn: 'দুঃখিত, আমি পথ হারিয়েছি। এই ঠিকানাটা খুঁজে দিতে সাহায্য করবেন?' },
+  { id: 'exit-7', place: 'exit', level: 3, type: 'listen', target: "It's about ten minutes on foot, or you can grab a bus.", bn: 'হেঁটে প্রায় দশ মিনিট, নয়তো বাস ধরতে পারেন।' },
+
+  // Bus
+  { id: 'bus-1', place: 'bus', level: 1, type: 'say', target: 'Does this bus go downtown?', bn: 'এই বাস কি ডাউনটাউন যায়?' },
+  { id: 'bus-2', place: 'bus', level: 1, type: 'say', target: 'Can I pay with cash?', bn: 'নগদ টাকায় ভাড়া দিতে পারি?' },
+  { id: 'bus-3', place: 'bus', level: 2, type: 'listen', target: 'Exact change only, no dollar bills.', bn: 'শুধু খুচরা পয়সা, ডলারের নোট চলবে না।' },
+  { id: 'bus-4', place: 'bus', level: 2, type: 'fix', prompt: 'Please tell me when we arrive to Main Street.', target: 'Please tell me when we get to Main Street.', accept: ['Please tell me when we arrive at Main Street'], bn: 'মেইন স্ট্রিটে পৌঁছালে আমাকে বলবেন, প্লিজ।' },
+  { id: 'bus-5', place: 'bus', level: 2, type: 'say', target: 'How often does this bus come?', bn: 'এই বাস কতক্ষণ পরপর আসে?' },
+  { id: 'bus-6', place: 'bus', level: 3, type: 'recall', prompt: 'Ask the driver to let you off at the next stop.', target: 'Could you let me off at the next stop?', accept: ['Can you let me off at the next stop'], bn: 'পরের স্টপে আমাকে নামিয়ে দেবেন?' },
+  { id: 'bus-7', place: 'bus', level: 3, type: 'listen', target: 'This bus is out of service. Please wait for the next one.', bn: 'এই বাস চলছে না। পরেরটার জন্য অপেক্ষা করুন।' },
+];
+
+export const CARDS: Card[] = [
+  ...WORLD_1.map((c) => ({ ...c, world: 1 as const })),
+  ...WORLD_2.map((c) => ({ ...c, world: 2 as const })),
 ];
 
 export const cardById = (id: string) => CARDS.find((c) => c.id === id);

@@ -1,0 +1,267 @@
+import { useEffect, useRef, useState } from 'react';
+import { BOSSES, BOSS_HP, FAST_MS, HEARTS, ROUND_SECONDS, answer, startBattle, type BattleState } from '../game/bosses';
+import type { WorldId } from '../game/cards';
+import { matchSpeech } from '../game/match';
+import { sayPhrase, stopSpeaking } from '../speech';
+import { Art, SpeakInput, SpeakerIcon, buzz } from './kit';
+
+interface Props {
+  world: WorldId;
+  sound: boolean;
+  bangla: boolean;
+  onAnswer: (right: boolean, fast: boolean) => void;
+  onWin: (s: BattleState) => void;
+  onExit: () => void;
+}
+
+type Phase = 'intro' | 'line' | 'answer' | 'hit' | 'miss' | 'lost';
+
+export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Props) {
+  const boss = BOSSES[world];
+  const [state, setState] = useState<BattleState>(() => startBattle(boss));
+  const [phase, setPhase] = useState<Phase>('intro');
+  const [left, setLeft] = useState(ROUND_SECONDS);
+  const [hintsLeft, setHintsLeft] = useState(1);
+  const [hintShown, setHintShown] = useState(false);
+  const [shake, setShake] = useState(0);
+  const askedAt = useRef(0);
+  const alive = useRef(true);
+
+  const roundIndex = state.queue[0];
+  const round = boss.rounds[roundIndex];
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      stopSpeaking();
+    };
+  }, []);
+
+  const playLine = async (rate = 1) => {
+    if (sound) await sayPhrase(`boss-${world}-${roundIndex}`, round.line, 'card', rate);
+  };
+
+  // Each round: the boss speaks, then your timer starts.
+  useEffect(() => {
+    if (phase !== 'line') return;
+    let cancelled = false;
+    (async () => {
+      await playLine();
+      if (cancelled || !alive.current) return;
+      askedAt.current = Date.now();
+      setLeft(ROUND_SECONDS);
+      setPhase('answer');
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, roundIndex]);
+
+  const resolve = (right: boolean) => {
+    const ms = Date.now() - askedAt.current;
+    const next = answer(state, right, ms);
+    onAnswer(right, right && ms < FAST_MS);
+    setState(next);
+    setHintShown(false);
+    if (right) {
+      setShake((n) => n + 1);
+      buzz(40);
+      setPhase('hit');
+    } else {
+      buzz([30, 80, 30]);
+      setPhase('miss');
+    }
+    window.setTimeout(
+      () => {
+        if (!alive.current) return;
+        if (next.over === 'won') onWin(next);
+        else if (next.over === 'lost') setPhase('lost');
+        else setPhase('line');
+      },
+      right ? 1100 : 2400,
+    );
+  };
+
+  // The round timer.
+  useEffect(() => {
+    if (phase !== 'answer') return;
+    const t = window.setInterval(() => {
+      const l = ROUND_SECONDS - (Date.now() - askedAt.current) / 1000;
+      setLeft(Math.max(0, l));
+      if (l <= 0) {
+        window.clearInterval(t);
+        resolve(false);
+      }
+    }, 100);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, roundIndex]);
+
+  const answered = (alts: string[]) => {
+    if (phase !== 'answer') return;
+    resolve(matchSpeech(round.target, round.accept, alts, 2).pass);
+  };
+
+  const restart = () => {
+    setState(startBattle(boss));
+    setHintsLeft(1);
+    setPhase('line');
+  };
+
+  const r = 46;
+  const circ = 2 * Math.PI * r;
+  const ring = (
+    <svg className="timer-ring" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r={r} className="timer-ring__track" />
+      <circle
+        cx="50"
+        cy="50"
+        r={r}
+        className={`timer-ring__fill ${left < 6 ? 'is-low' : ''}`}
+        strokeDasharray={circ}
+        strokeDashoffset={circ * (1 - (phase === 'answer' ? left / ROUND_SECONDS : 1))}
+      />
+    </svg>
+  );
+
+  if (phase === 'intro') {
+    return (
+      <div className={`screen boss boss--w${world}`}>
+        <div className="boss-intro">
+          <p className="eyebrow">Boss battle · World {world}</p>
+          <Art name={boss.art} fallback={boss.icon} className="boss-intro__art" />
+          <h1 className="display">{boss.name}</h1>
+          <p className="boss-intro__title">{boss.title}</p>
+          <div className="bubble bubble--center">
+            <p className="bubble__line">{boss.intro}</p>
+          </div>
+          <ul className="boss-rules">
+            <li>
+              Answer in English using the <strong>Bangla meaning</strong>.
+            </li>
+            <li>
+              {ROUND_SECONDS} seconds each. <strong>{BOSS_HP} right answers</strong> win.
+            </li>
+            <li>
+              {HEARTS} mistakes and you're out. You have 1 hint.
+            </li>
+          </ul>
+          <button type="button" className="btn btn--red btn--big" onClick={() => setPhase('line')}>
+            FIGHT!
+          </button>
+          <button type="button" className="link-btn link-btn--light" onClick={onExit}>
+            Not now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'lost') {
+    return (
+      <div className={`screen boss boss--w${world}`}>
+        <div className="boss-intro">
+          <Art name={boss.art} fallback={boss.icon} className="boss-intro__art" />
+          <h1 className="display">So close!</h1>
+          <p>
+            {boss.name} won this time. You hit them {BOSS_HP - state.hp} of {BOSS_HP} times.
+          </p>
+          <p className="bn-line" lang="bn">
+            আবার চেষ্টা করুন, আপনি পারবেন!
+          </p>
+          <button type="button" className="btn btn--red btn--big" onClick={restart}>
+            Try again
+          </button>
+          <button type="button" className="link-btn link-btn--light" onClick={onExit}>
+            Back to the map
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`screen boss boss--w${world}`}>
+      <header className="boss-top">
+        <button type="button" className="icon-btn" onClick={onExit} aria-label="Leave the battle">
+          ←
+        </button>
+        <div className="boss-plate">
+          <p className="boss-plate__name">{boss.name.toUpperCase()}</p>
+          <div className="hp" role="meter" aria-label={`${boss.name} health`} aria-valuenow={state.hp} aria-valuemin={0} aria-valuemax={BOSS_HP}>
+            {Array.from({ length: BOSS_HP }, (_, i) => (
+              <span key={i} className={i < state.hp ? 'is-on' : ''} />
+            ))}
+          </div>
+          <p className="boss-plate__hp">
+            {state.hp} / {BOSS_HP}
+          </p>
+        </div>
+      </header>
+
+      <div className="boss-stage">
+        <div key={shake} className={`boss-stage__art ${phase === 'hit' ? 'is-hit' : ''}`}>
+          <Art name={boss.art} fallback={boss.icon} />
+        </div>
+        <div className="bubble">
+          <p className="bubble__line">{round.line}</p>
+          <button type="button" className="pill-btn pill-btn--small" onClick={() => playLine(0.8)} disabled={!sound}>
+            <SpeakerIcon /> Again
+          </button>
+        </div>
+        {state.combo >= 2 && <p className="combo">COMBO x{state.combo}</p>}
+      </div>
+
+      <section className="boss-panel">
+        {phase === 'hit' && <p className="hit-text">💥 Hit!</p>}
+        {phase === 'miss' && (
+          <div className="miss-box" role="status">
+            <p className="miss-box__title">{left <= 0 ? "Time's up!" : 'Not quite!'} −1 ❤️</p>
+            <p>You could say: “{round.target}”</p>
+          </div>
+        )}
+        {(phase === 'line' || phase === 'answer') && (
+          <>
+            <p className="say-label">Say this in English:</p>
+            <p className="phrase phrase--bn" lang="bn">
+              {round.bn}
+            </p>
+            {hintShown && <p className="hint-card">💡 “{round.target}”</p>}
+            <SpeakInput key={`${roundIndex}-${state.hearts}-${state.hp}`} onAnswer={answered} disabled={phase !== 'answer'} ring={ring} idleLabel={phase === 'line' ? 'Listen…' : `${Math.ceil(left)}s · Tap and answer`} />
+          </>
+        )}
+      </section>
+
+      <footer className="boss-foot">
+        <div className="me">
+          <Art name="hero-avatar" fallback="🧔🏽‍♂️" className="me__avatar" />
+          <span className="hearts" aria-label={`${state.hearts} hearts left`}>
+            {Array.from({ length: HEARTS }, (_, i) => (
+              <span key={i} className={i < state.hearts ? 'is-on' : ''}>
+                ❤
+              </span>
+            ))}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="pill-btn pill-btn--gold"
+          onClick={() => {
+            setHintsLeft(0);
+            setHintShown(true);
+          }}
+          disabled={hintsLeft === 0 || phase !== 'answer'}
+        >
+          💡 Hint ({hintsLeft} left)
+        </button>
+      </footer>
+      {bangla && (
+        <p className="bn-line boss-bn" lang="bn">
+          দ্রুত উত্তর দিন!
+        </p>
+      )}
+    </div>
+  );
+}

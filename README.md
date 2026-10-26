@@ -1,10 +1,15 @@
 # Speak & Move
 
-A board game for practising spoken English in real New York situations. There are no dice: pick an Easy, Medium or Hard card, say the phrase out loud, and move 1, 2 or 3 squares if you say it right. Race Maya home.
+A game for practising spoken English in real New York situations.
 
-- Card types: **Say it**, **Listen** (hear it, say it back), **Fix it** (correct the mistake), **From Bangla** (say it in English from the Bangla meaning)
-- Missed phrases go to a review deck and come back after 1, 3 and 7 days
-- A real-life mission after each game
+1. **Your First Day in New York**: six quick spoken scenes (taxi, subway, deli, landlord, neighbor, boss) that adapt as you go and measure your level.
+2. **Player card**: a rank (Tourist → Legend) and five stats: Ear, Voice, Grammar, Words, Speed.
+3. **World map**: Bodega Block and The Subway are playable; more worlds are coming.
+4. **Board race vs Maya**: no dice. Pick Easy (+1), Medium (+2) or Hard (+3), say the phrase out loud, and move if you say it right. Cards that train your weakest stat come up more often.
+5. **Boss battle**: answer the boss in English from the Bangla meaning, against a 20-second timer.
+6. **Review deck** (back after 1, 3 and 7 days) and a **real-life mission** after each race.
+
+Character art goes in `public/art/` (see the README there); placeholders show until it exists. Natural voices: `node scripts/gen-audio.mjs` with an ElevenLabs key saved in `~/.config/elevenlabs/key`.
 
 Voice checking uses the browser's built-in speech recognition (Chrome or Safari, https only). You can always type instead.
 

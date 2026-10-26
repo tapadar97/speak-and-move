@@ -74,6 +74,57 @@ export function listen(h: ListenHandlers): () => void {
   };
 }
 
+export interface LongHandlers {
+  /** Everything heard so far (finished parts plus the part being spoken). */
+  onText: (text: string) => void;
+  onError: (e: ListenError) => void;
+  onEnd: () => void;
+}
+
+/** Keep listening across pauses (free talk). Returns a function that stops. */
+export function listenLong(h: LongHandlers, startText = ''): () => void {
+  const C = Ctor();
+  if (!C) {
+    h.onError('unsupported');
+    h.onEnd();
+    return () => {};
+  }
+  const rec: Recognition = new C();
+  rec.lang = 'en-US';
+  rec.interimResults = true;
+  rec.continuous = true;
+  let done = startText;
+  rec.onresult = (e: Recognition) => {
+    let live = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) done = `${done} ${r[0].transcript}`.trim();
+      else live += r[0].transcript;
+    }
+    h.onText(`${done} ${live}`.trim());
+  };
+  rec.onerror = (e: Recognition) => {
+    const code: string = e.error;
+    if (code === 'not-allowed' || code === 'service-not-allowed' || code === 'audio-capture') h.onError('mic-blocked');
+    else if (code === 'network') h.onError('network');
+    else if (code !== 'aborted' && code !== 'no-speech') h.onError('other');
+  };
+  rec.onend = () => h.onEnd();
+  try {
+    rec.start();
+  } catch {
+    h.onError('other');
+    h.onEnd();
+  }
+  return () => {
+    try {
+      rec.stop();
+    } catch {
+      /* already stopped */
+    }
+  };
+}
+
 let voice: SpeechSynthesisVoice | null = null;
 
 function pickVoice(): SpeechSynthesisVoice | null {
@@ -120,6 +171,57 @@ export function speak(text: string, rate = 1): Promise<void> {
   });
 }
 
+/* ---------- Natural recordings (ElevenLabs), with the phone voice as backup ---------- */
+
+interface Manifest {
+  voices: Record<string, string>;
+  cards: string[];
+}
+
+let manifest: Promise<Manifest | null> | null = null;
+let current: HTMLAudioElement | null = null;
+
+/** Which recordings exist. Missing or broken manifest means "use the phone voice". */
+export function loadManifest(): Promise<Manifest | null> {
+  manifest ??= fetch('audio/manifest.json')
+    .then((r) => (r.ok ? (r.json() as Promise<Manifest>) : null))
+    .catch(() => null);
+  return manifest;
+}
+
+if (typeof window !== 'undefined') loadManifest();
+
+function playFile(url: string, rate: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const a = new Audio(url);
+    current = a;
+    a.playbackRate = rate;
+    // Keep the speaker's natural pitch when slowed down.
+    a.preservesPitch = true;
+    a.onended = () => resolve(true);
+    a.onerror = () => resolve(false);
+    a.play().catch(() => resolve(false));
+  });
+}
+
+/**
+ * Play a phrase in a natural voice: the place's voice (`card`) or Maya's.
+ * `rate` 1 is normal, below 0.8 is slow. Falls back to the phone voice.
+ */
+export async function sayPhrase(cardId: string, text: string, who: 'card' | 'maya', rate = 1): Promise<void> {
+  stopSpeaking();
+  const m = await loadManifest();
+  if (m?.cards.includes(cardId)) {
+    const clipRate = rate < 0.8 ? 0.72 : rate < 0.95 ? 0.9 : 1;
+    if (await playFile(`audio/${who}/${cardId}.mp3`, clipRate)) return;
+  }
+  await speak(text, rate);
+}
+
 export function stopSpeaking() {
+  if (current) {
+    current.pause();
+    current = null;
+  }
   if (canSpeak()) window.speechSynthesis.cancel();
 }

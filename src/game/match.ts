@@ -29,9 +29,18 @@ const CONTRACTIONS: Record<string, string> = {
 
 const NUMBERS: Record<string, string> = {
   zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7',
-  eight: '8', nine: '9', ten: '10', eleven: '11', twelve: '12', fifteen: '15', twenty: '20',
-  thirty: '30',
+  eight: '8', nine: '9', ten: '10', eleven: '11', twelve: '12', thirteen: '13', fourteen: '14',
+  fifteen: '15', sixteen: '16', seventeen: '17', eighteen: '18', nineteen: '19', twenty: '20',
+  thirty: '30', forty: '40', fifty: '50',
 };
+
+/**
+ * In a target, the word XNUM matches any number or time the player says
+ * ("I can start at XNUM" accepts "I can start at 9" or "at noon").
+ */
+export const ANY_NUMBER = 'xnum';
+const TIME_WORDS = new Set(['noon', 'midnight', 'morning', 'afternoon', 'evening', 'tonight', 'tomorrow']);
+const same = (t: string, h: string) => t === h || (t === ANY_NUMBER && (/^\d/.test(h) || TIME_WORDS.has(h)));
 
 /** Spoken and written forms the recogniser may split or join differently. */
 const JOINS: [RegExp, string][] = [
@@ -79,14 +88,14 @@ function matchedWords(target: string[], heard: string[]): boolean[] {
   const dp = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
-      dp[i][j] = target[i] === heard[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      dp[i][j] = same(target[i], heard[j]) ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
     }
   }
   const ok = new Array<boolean>(n).fill(false);
   let i = 0;
   let j = 0;
   while (i < n && j < m) {
-    if (target[i] === heard[j]) {
+    if (same(target[i], heard[j])) {
       ok[i] = true;
       i++;
       j++;
@@ -142,13 +151,14 @@ export function matchSpeech(
   const b = best!;
   // Show the words in their written form so the player sees the sentence they know.
   const shown = b.display.replace(/[.?!,]/g, '').split(/\s+/).filter(Boolean);
+  const label = (w: string) => (w.toLowerCase() === ANY_NUMBER ? '…' : w);
   let k = 0;
   const words: WordResult[] = shown.map((word) => {
     const parts = normalize(word);
     const slice = b.ok.slice(k, k + parts.length);
     k += parts.length;
     const ok = (slice.length > 0 && slice.every(Boolean)) || parts.every((p) => OPTIONAL.has(p));
-    return { word, ok };
+    return { word: label(word), ok };
   });
   return { pass: b.pass, score: b.score, words, heard: b.heard };
 }
