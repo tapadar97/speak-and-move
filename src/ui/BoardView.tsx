@@ -61,7 +61,7 @@ export function BoardView({ world, players, previews = [], active }: Props) {
       <svg className="board__express" viewBox="0 0 100 100" aria-hidden="true">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-            <path d="M0 0 L10 5 L0 10 z" fill="#ffd23f" />
+            <path d="M0 0 L10 5 L0 10 z" fill="#ffc800" />
           </marker>
         </defs>
         {Object.entries(ex).map(([from, to]) => {
@@ -71,12 +71,11 @@ export function BoardView({ world, players, previews = [], active }: Props) {
           const my = (a.y + b.y) / 2 + (50 - (a.y + b.y) / 2) * 0.5;
           return (
             <g key={from}>
-              <path d={`M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`} fill="none" stroke="#7a4b00" strokeWidth="2.6" strokeLinecap="round" opacity="0.35" />
               <path
                 d={`M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`}
                 fill="none"
-                stroke="#ffd23f"
-                strokeWidth="1.6"
+                stroke="#ffc800"
+                strokeWidth="1.4"
                 strokeDasharray="3 2"
                 strokeLinecap="round"
                 markerEnd="url(#arrow)"
