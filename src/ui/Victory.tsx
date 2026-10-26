@@ -2,7 +2,7 @@ import { BOSSES } from '../game/bosses';
 import { PLACES, cardById, type WorldId } from '../game/cards';
 import { STAT_INFO, STAT_KEYS, type Stats } from '../game/stats';
 import { WORLDS, isPlayable } from '../game/worlds';
-import { Art } from './kit';
+import { Art, PlayerArt } from './kit';
 
 interface Props {
   world: WorldId;
@@ -37,7 +37,7 @@ export function Victory({ world, stars, firstClear, before, after, missionCardId
       </div>
 
       <div className="victory__cast" aria-hidden="true">
-        <Art name="hero-cheer" fallback="🙌🏽" className="victory__hero" />
+        <PlayerArt pose="cheer" className="victory__hero" />
         <Art name={boss.art} fallback={boss.icon} className="victory__boss" />
       </div>
 

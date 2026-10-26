@@ -7,7 +7,7 @@ import { worldById } from '../game/worlds';
 import { sayPhrase } from '../speech';
 import { BoardView } from './BoardView';
 import { CardSheet, type CardDone } from './CardSheet';
-import { Art } from './kit';
+import { Art, PlayerArt } from './kit';
 
 export interface RaceSummary {
   won: boolean;
@@ -168,7 +168,7 @@ export function Game({ world, stats, sound, bangla, bossBeaten, onCard, onFinish
           ←
         </button>
         <div className={`vs-panel vs-panel--you ${phase === 'choose' || phase === 'card' ? 'is-turn' : ''}`}>
-          <Art name="hero-avatar" fallback="🧔🏽‍♂️" className="vs-panel__avatar" />
+          <PlayerArt pose="avatar" className="vs-panel__avatar" />
           <span className="vs-panel__name">YOU</span>
           <span className="vs-panel__pos">
             <b>{players.you}</b>/{HOME}

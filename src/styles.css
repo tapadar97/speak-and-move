@@ -708,6 +708,116 @@ p {
   font-size: 16px;
 }
 
+/* ---------- Pick your player ---------- */
+
+.pick-head {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.pick-head .bn-line {
+  text-align: left;
+}
+
+.pick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 8px 4px;
+}
+
+.pick-card {
+  position: relative;
+  border: 0;
+  border-radius: 26px;
+  padding: 12px 8px 14px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  color: var(--white);
+  background:
+    radial-gradient(70% 45% at 50% 35%, rgba(255, 255, 255, 0.3), transparent 70%),
+    linear-gradient(180deg, var(--royal), var(--royal-3));
+  box-shadow: 0 0 0 3px var(--gold), 0 8px 0 3px var(--royal-3), 0 14px 22px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 150ms;
+}
+
+.pick-card.is-on {
+  transform: translateY(-6px) scale(1.03);
+  background:
+    radial-gradient(70% 45% at 50% 35%, rgba(255, 255, 255, 0.45), transparent 70%),
+    linear-gradient(180deg, #4d7bff, var(--royal));
+  box-shadow: 0 0 0 4px var(--gold-hi), 0 0 26px 6px rgba(255, 230, 120, 0.8), 0 10px 0 4px var(--royal-3);
+}
+
+.pick-card__art {
+  width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.3));
+}
+
+.pick-card .art--fallback {
+  width: 120px;
+  font-size: 22px;
+  margin-bottom: auto;
+  margin-top: 30px;
+}
+
+.pick-card__label {
+  font-family: var(--font-display);
+  font-size: 26px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--navy);
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+.pick-card__check {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 800;
+  background: var(--go);
+  box-shadow: 0 0 0 3px var(--white), 0 4px 0 3px var(--go-lo);
+}
+
+.name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 800;
+  margin: 0 4px;
+}
+
+.name-field input {
+  min-height: 54px;
+  border: 3px solid var(--gold);
+  border-radius: 16px;
+  padding: 10px 16px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--ink);
+  background: var(--cream);
+}
+
+.name-field input:focus {
+  outline: 3px solid var(--gold-hi);
+  outline-offset: 2px;
+}
+
 /* ---------- First Day ---------- */
 
 .firstday--intro {

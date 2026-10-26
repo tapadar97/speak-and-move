@@ -2,6 +2,8 @@ import type { WorldId } from './cards';
 import type { ReviewDeck } from './review';
 import type { Stats } from './stats';
 
+export type PlayerChoice = 'hero' | 'girl';
+
 export interface Mission {
   cardId: string;
   given: string;
@@ -16,6 +18,10 @@ export interface WorldProgress {
 }
 
 export interface Profile {
+  /** Null until the player picks a character. */
+  player: PlayerChoice | null;
+  /** Shown on the player card; empty means "YOU". */
+  name: string;
   coins: number;
   xp: number;
   /** Null until the First Day level check is done. */
@@ -36,6 +42,8 @@ export interface Profile {
 const freshWorld = (): WorldProgress => ({ raceWins: 0, stars: 0, startStats: null });
 
 export const NEW_PROFILE: Profile = {
+  player: null,
+  name: '',
   coins: 0,
   xp: 0,
   stats: null,

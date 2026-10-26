@@ -9,7 +9,7 @@ import {
 } from '../game/firstday';
 import { matchSpeech } from '../game/match';
 import { sayPhrase, stopSpeaking } from '../speech';
-import { Art, SpeakInput, SpeakerIcon, TalkInput, buzz, type TalkResult } from './kit';
+import { Art, SpeakInput, SpeakerIcon, TalkInput, buzz, type TalkResult, PlayerArt } from './kit';
 
 interface Props {
   sound: boolean;
@@ -205,7 +205,7 @@ export function FirstDay({ sound, bangla, onDone, onExit }: Props) {
       </section>
 
       <div className="me-avatar" aria-hidden="true">
-        <Art name="hero-avatar" fallback="🧔🏽‍♂️" />
+        <PlayerArt pose="avatar" />
       </div>
     </div>
   );

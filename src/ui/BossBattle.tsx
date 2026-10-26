@@ -3,7 +3,7 @@ import { BOSSES, BOSS_HP, FAST_MS, HEARTS, ROUND_SECONDS, answer, startBattle, t
 import type { WorldId } from '../game/cards';
 import { matchSpeech } from '../game/match';
 import { sayPhrase, stopSpeaking } from '../speech';
-import { Art, SpeakInput, SpeakerIcon, buzz } from './kit';
+import { Art, SpeakInput, SpeakerIcon, buzz, PlayerArt } from './kit';
 
 interface Props {
   world: WorldId;
@@ -236,7 +236,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
 
       <footer className="boss-foot">
         <div className="me">
-          <Art name="hero-avatar" fallback="🧔🏽‍♂️" className="me__avatar" />
+          <PlayerArt pose="avatar" className="me__avatar" />
           <span className="hearts" aria-label={`${state.hearts} hearts left`}>
             {Array.from({ length: HEARTS }, (_, i) => (
               <span key={i} className={i < state.hearts ? 'is-on' : ''}>

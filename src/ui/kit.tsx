@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import type { PlayerChoice } from '../game/profile';
 import { canListen, listen, listenLong, stopSpeaking, type ListenError } from '../speech';
 
 /**
@@ -22,6 +23,30 @@ export function Art({ name, fallback, className = '' }: { name: string; fallback
       aria-hidden="true"
       draggable={false}
       onError={() => setFailed(true)}
+    />
+  );
+}
+
+export type { PlayerChoice };
+
+export const PLAYERS: Record<PlayerChoice, { label: string; fallback: string; cheer: string }> = {
+  hero: { label: 'Him', fallback: '🧔🏽‍♂️', cheer: '🙌🏽' },
+  girl: { label: 'Her', fallback: '👩🏽', cheer: '🙌🏽' },
+};
+
+/** Which character the player picked; every screen draws that one. */
+export const PlayerContext = createContext<PlayerChoice>('hero');
+
+/** The player's character in a pose: art is public/art/<hero|girl>-<pose>.png. */
+export function PlayerArt({ pose, className = '', who }: { pose: 'wave' | 'cheer' | 'avatar'; className?: string; who?: PlayerChoice }) {
+  const picked = useContext(PlayerContext);
+  const p = who ?? picked;
+  return (
+    <Art
+      key={`${p}-${pose}`}
+      name={`${p}-${pose}`}
+      fallback={pose === 'cheer' ? PLAYERS[p].cheer : PLAYERS[p].fallback}
+      className={className}
     />
   );
 }

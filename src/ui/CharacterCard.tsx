@@ -1,8 +1,9 @@
 import { QUESTS, RANKS, STAT_INFO, STAT_KEYS, rankIndex, weakest, type Stats } from '../game/stats';
-import { Art, RANK_ICONS } from './kit';
+import { PlayerArt, RANK_ICONS } from './kit';
 
 interface Props {
   stats: Stats;
+  name: string;
   mode: 'result' | 'view';
   bangla: boolean;
   outfits: string[];
@@ -10,7 +11,7 @@ interface Props {
   onRetake?: () => void;
 }
 
-export function CharacterCard({ stats, mode, bangla, outfits, onStart, onRetake }: Props) {
+export function CharacterCard({ stats, name, mode, bangla, outfits, onStart, onRetake }: Props) {
   const rank = rankIndex(stats);
   const weak = weakest(stats);
   const quest = QUESTS[weak];
@@ -25,8 +26,8 @@ export function CharacterCard({ stats, mode, bangla, outfits, onStart, onRetake 
 
       <section className="player-card" aria-label="Your player card">
         <div className="player-card__hero">
-          <Art name="hero-avatar" fallback="🧔🏽‍♂️" className="player-card__art" />
-          <p className="player-card__you">YOU</p>
+          <PlayerArt pose="avatar" className="player-card__art" />
+          <p className="player-card__you">{name ? name.toUpperCase() : 'YOU'}</p>
         </div>
 
         <div className="rank-badge">

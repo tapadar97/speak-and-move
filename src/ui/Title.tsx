@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { loadManifest } from '../speech';
-import { Art } from './kit';
+import { PlayerArt } from './kit';
 
 interface Props {
   coins: number;
@@ -8,9 +8,10 @@ interface Props {
   bangla: boolean;
   onPlay: () => void;
   onToggle: (k: 'sound' | 'bangla') => void;
+  onChangePlayer: () => void;
 }
 
-export function Title({ coins, sound, bangla, onPlay, onToggle }: Props) {
+export function Title({ coins, sound, bangla, onPlay, onToggle, onChangePlayer }: Props) {
   const [settings, setSettings] = useState(false);
   const [voiced, setVoiced] = useState(false);
 
@@ -42,7 +43,7 @@ export function Title({ coins, sound, bangla, onPlay, onToggle }: Props) {
       </h1>
 
       <div className="title-hero">
-        <Art name="hero-wave" fallback="🧔🏽‍♂️" className="title-hero__art" />
+        <PlayerArt pose="wave" className="title-hero__art" />
       </div>
 
       <div className="title-foot">
@@ -75,6 +76,10 @@ export function Title({ coins, sound, bangla, onPlay, onToggle }: Props) {
                 Bangla hints <span lang="bn">(বাংলা)</span>
               </span>
               <span className="setting__state">{bangla ? 'On' : 'Off'}</span>
+            </button>
+            <button type="button" className="setting" onClick={onChangePlayer}>
+              <span>Change player or name</span>
+              <span className="setting__state">›</span>
             </button>
             <button type="button" className="btn btn--blue" onClick={() => setSettings(false)}>
               Done

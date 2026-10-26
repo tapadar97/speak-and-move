@@ -5,7 +5,7 @@ import { XP_PER_LEVEL, isUnlocked, playerLevel, type Profile } from '../game/pro
 import { dueItems } from '../game/review';
 import { RANKS } from '../game/stats';
 import { WORLDS, isPlayable } from '../game/worlds';
-import { Art, RANK_ICONS } from './kit';
+import { Art, RANK_ICONS, PlayerArt } from './kit';
 
 interface Props {
   profile: Profile;
@@ -38,7 +38,7 @@ export function MapScreen({ profile, rank, current, day, onRace, onBoss, onCard,
     <div className="screen map-screen">
       <header className="map-top">
         <button type="button" className="map-top__me" onClick={onCard} aria-label="Open your player card">
-          <Art name="hero-avatar" fallback="🧔🏽‍♂️" className="map-top__avatar" />
+          <PlayerArt pose="avatar" className="map-top__avatar" />
           <span className="map-top__rank">
             {RANK_ICONS[rank]} {RANKS[rank].toUpperCase()}
           </span>
@@ -98,7 +98,7 @@ export function MapScreen({ profile, rank, current, day, onRace, onBoss, onCard,
               </div>
               {isCurrent && (
                 <div className="world__pin" aria-hidden="true">
-                  <Art name="hero-avatar" fallback="🧔🏽‍♂️" />
+                  <PlayerArt pose="avatar" />
                 </div>
               )}
             </li>
