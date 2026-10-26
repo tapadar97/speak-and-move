@@ -9,7 +9,7 @@ A game for practising spoken English in real New York situations.
 5. **Boss battle**: answer the boss in English from the Bangla meaning, against a 20-second timer.
 6. **Review deck** (back after 1, 3 and 7 days) and a **real-life mission** after each race.
 
-Character art goes in `public/art/` (see the README there); placeholders show until it exists. Natural voices: `node scripts/gen-audio.mjs` with an ElevenLabs key saved in `~/.config/elevenlabs/key`.
+Character art goes in `public/art/` (see the README there); placeholders show until it exists. Natural voices: `npm run voices` with an ElevenLabs key saved in `~/.config/elevenlabs/key`.
 
 Voice checking uses the browser's built-in speech recognition (Chrome or Safari, https only). You can always type instead.
 

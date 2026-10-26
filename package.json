@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "voices": "tsx scripts/gen-audio.mjs"
   },
   "dependencies": {
     "react": "18.3.1",
@@ -16,6 +17,7 @@
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@vitejs/plugin-react": "4.3.4",
+    "tsx": "^4.19.2",
     "typescript": "5.7.2",
     "vite": "6.0.7",
     "vite-plugin-singlefile": "2.1.0",
