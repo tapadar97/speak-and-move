@@ -3,6 +3,8 @@ import { PlayerArt, RANK_ICONS } from './kit';
 
 interface Props {
   stats: Stats;
+  /** Stats before the latest weekly check-up, to show progress. */
+  before: Stats | null;
   name: string;
   mode: 'result' | 'view';
   bangla: boolean;
@@ -11,7 +13,7 @@ interface Props {
   onRetake?: () => void;
 }
 
-export function CharacterCard({ stats, name, mode, bangla, outfits, onStart, onRetake }: Props) {
+export function CharacterCard({ stats, before, name, mode, bangla, outfits, onStart, onRetake }: Props) {
   const rank = rankIndex(stats);
   const weak = weakest(stats);
   const quest = QUESTS[weak];
@@ -60,12 +62,21 @@ export function CharacterCard({ stats, name, mode, bangla, outfits, onStart, onR
                 <span className="stat-row__bar" role="meter" aria-valuenow={stats[k]} aria-valuemin={0} aria-valuemax={100} aria-label={`${info.name}: ${info.what}`}>
                   <span style={{ width: `${stats[k]}%`, background: info.color }} />
                 </span>
-                <span className="stat-row__num">{stats[k]}</span>
+                <span className="stat-row__num">
+                  {stats[k]}
+                  {before && stats[k] !== before[k] && (
+                    <span className={`delta ${stats[k] > before[k] ? 'is-up' : 'is-down'}`}>
+                      {stats[k] > before[k] ? '+' : ''}
+                      {stats[k] - before[k]}
+                    </span>
+                  )}
+                </span>
               </li>
             );
           })}
         </ul>
 
+        {before && <p className="player-card__since">Green numbers: change since your last check-up</p>}
         {outfits.length > 0 && <p className="player-card__outfits">Outfits: {outfits.join(' · ')}</p>}
       </section>
 

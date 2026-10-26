@@ -2286,6 +2286,481 @@ p {
   gap: 4px;
 }
 
+/* ---------- Learning redesign ---------- */
+
+.second-chance {
+  align-self: stretch;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: #fff1c2;
+  color: #7a4b00;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.step-stars {
+  margin-left: 6px;
+  letter-spacing: 1px;
+  font-size: 15px;
+  color: #c9cfe8;
+}
+
+.step-stars .is-on {
+  color: var(--gold);
+  text-shadow: 0 1px 0 var(--gold-lo);
+}
+
+.phrase--gap {
+  letter-spacing: 0.01em;
+}
+
+.phrase--ask {
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: clamp(20px, 5.6vw, 24px);
+}
+
+.phrase--situation {
+  color: var(--ink);
+  font-size: clamp(20px, 5.8vw, 26px);
+}
+
+button.w-miss {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.word-practice {
+  width: 100%;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: 0 0 0 2px #ffc0c8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.word-practice__word {
+  font-family: var(--font-display);
+  font-size: 32px;
+  color: var(--ink);
+}
+
+.word-practice__ok {
+  font-weight: 800;
+  color: var(--go-lo);
+}
+
+.word-practice__try {
+  font-weight: 700;
+  color: #b45309;
+}
+
+.word-practice .mic {
+  width: 72px;
+  height: 72px;
+}
+
+.word-practice .speak__mic-wrap {
+  width: 96px;
+  height: 96px;
+}
+
+.why {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #eef3ff;
+  box-shadow: inset 4px 0 0 var(--you);
+  color: var(--ink);
+}
+
+.why__title {
+  font-weight: 800;
+}
+
+.why__bn {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.choice {
+  position: relative;
+}
+
+.choice.is-yours {
+  box-shadow: 0 0 0 4px var(--gold-hi), 0 7px 0 4px var(--lo), 0 0 22px 4px rgba(255, 220, 100, 0.7);
+}
+
+.choice__yours {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-family: var(--font);
+  font-weight: 800;
+  font-size: 11px;
+  color: #4a2a00;
+  text-shadow: none;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  box-shadow: 0 2px 0 var(--gold-lo);
+}
+
+/* Phrase Pack */
+
+.pack-screen {
+  justify-content: flex-start;
+}
+
+.pack-screen .intro-card {
+  margin-top: auto;
+  margin-bottom: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.pack-boss {
+  width: 110px;
+  align-self: center;
+}
+
+.pack-screen .art--fallback.pack-boss {
+  font-size: 18px;
+}
+
+.pack-dots {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  gap: 6px;
+}
+
+.pack-dots li {
+  width: 22px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.pack-dots li.is-done {
+  background: var(--go);
+}
+
+.pack-dots li.is-now {
+  background: var(--gold);
+}
+
+.learn-card {
+  --c: var(--deli);
+  margin: 6px 4px;
+  padding: 18px 16px;
+  border-radius: 26px;
+  background: var(--cream);
+  color: var(--ink);
+  box-shadow: 0 0 0 4px var(--gold), 0 8px 0 4px var(--gold-lo);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.learn-card__place {
+  align-self: stretch;
+  padding: 8px 12px;
+  border-radius: 14px;
+  color: var(--white);
+  font-weight: 800;
+  background: var(--c);
+}
+
+.learn-card__phrase {
+  color: var(--ink);
+}
+
+.learn-card__bn {
+  color: var(--ink-soft);
+  font-size: 19px;
+}
+
+.learn-card .mic-label {
+  color: var(--ink);
+}
+
+.learn-card .link-btn--light {
+  color: var(--ink-soft);
+}
+
+/* Phrasebook */
+
+.book-screen {
+  gap: 12px;
+}
+
+.book-title {
+  font-size: 32px;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.tab {
+  border: 0;
+  border-radius: 12px;
+  min-height: 44px;
+  font-weight: 800;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab.is-on {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.mastery-bar {
+  display: flex;
+  height: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--navy);
+}
+
+.mastery-bar__seg--0,
+.mastery-dot--0 {
+  background: #6b7399;
+}
+
+.mastery-bar__seg--1,
+.mastery-dot--1 {
+  background: #29b6f6;
+}
+
+.mastery-bar__seg--2,
+.mastery-dot--2 {
+  background: #8c5cff;
+}
+
+.mastery-bar__seg--3,
+.mastery-dot--3 {
+  background: var(--gold);
+}
+
+.mastery-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mastery-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.book-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.book-row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.book-row__play {
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #4d7bff, var(--royal));
+  box-shadow: 0 0 0 2px var(--gold);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.book-row__main {
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: var(--cream);
+  color: var(--ink);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.book-row__text {
+  font-weight: 800;
+  font-size: 17px;
+}
+
+.book-row__bn {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.book-row__meta {
+  font-size: 13px;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.book-row__meta .step-stars {
+  margin-left: 0;
+}
+
+/* Map: daily goal, check-up, mission reflection */
+
+.goal-strip {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 20px;
+  background: rgba(4, 12, 60, 0.4);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.goal-ring {
+  --p: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--go) calc(var(--p) * 360deg), rgba(255, 255, 255, 0.18) 0);
+}
+
+.goal-ring > span {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--royal-3);
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+
+.goal-strip__text {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.streak-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  background: #ff8a1f;
+  color: #2b1300;
+  box-shadow: 0 3px 0 #b85c00;
+}
+
+.recheck {
+  border: 0;
+  border-radius: 20px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  color: #3d2400;
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+  box-shadow: 0 5px 0 var(--gold-lo);
+  font-size: 26px;
+  cursor: pointer;
+}
+
+.recheck > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+.recheck strong {
+  font-size: 17px;
+}
+
+.map-foot .round-btn {
+  width: 60px;
+  height: 60px;
+  font-size: 22px;
+}
+
+.map-foot .btn--mega {
+  font-size: 30px;
+  min-height: 62px;
+}
+
+.how {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.how__q {
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+
+/* Player card progress */
+
+.delta {
+  margin-left: 4px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.delta.is-up {
+  color: #6ef09a;
+}
+
+.delta.is-down {
+  color: #ffb4b4;
+}
+
+.player-card__since {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.stat-row {
+  grid-template-columns: 30px 92px 1fr auto;
+}
+
 /* ---------- Race end ---------- */
 
 .end {
@@ -2823,4 +3298,9 @@ p {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Practice screens: leave room for the header above the card. */
+.review .card-sheet {
+  max-height: calc(100% - 118px);
 }

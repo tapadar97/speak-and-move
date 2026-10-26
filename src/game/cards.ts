@@ -106,6 +106,14 @@ const WORLD_1: Omit<Card, 'world'>[] = [
   { id: 'street-5', place: 'street', level: 2, type: 'say', target: 'Nice weather today, right?', bn: 'আজকের আবহাওয়াটা সুন্দর, তাই না?' },
   { id: 'street-6', place: 'street', level: 3, type: 'recall', prompt: 'Tell someone you are new in the neighborhood.', target: 'I just moved to the neighborhood.', accept: ["I'm new in the neighborhood", 'I just moved here'], bn: 'আমি এই এলাকায় নতুন এসেছি।' },
   { id: 'street-7', place: 'street', level: 3, type: 'listen', target: "It's right across the street from the bank.", bn: 'ব্যাংকের ঠিক উল্টো দিকে।' },
+
+  // Boss phrases (learned in the Phrase Pack, used against Tony)
+  { id: 'deli-b1', place: 'deli', level: 2, type: 'say', target: 'Bacon, egg and cheese on a roll, please.', accept: ['Can I get a bacon egg and cheese on a roll', 'A bacon egg and cheese on a roll please'], bn: 'রোলে বেকন, ডিম আর চিজ দেবেন।' },
+  { id: 'deli-b2', place: 'deli', level: 1, type: 'say', target: 'Yes, everything please.', accept: ['Yeah everything', 'Everything please', 'Yes all of it please'], bn: 'হ্যাঁ, সবকিছু দিন।' },
+  { id: 'deli-b3', place: 'deli', level: 2, type: 'say', target: 'Yes, a small coffee with milk and sugar.', accept: ['Yeah a small coffee with milk and sugar please'], bn: 'হ্যাঁ, দুধ আর চিনি দিয়ে একটা ছোট কফি।' },
+  { id: 'deli-b4', place: 'deli', level: 1, type: 'say', target: 'To go, please.', accept: ["It's to go"], bn: 'নিয়ে যাব।' },
+  { id: 'deli-b5', place: 'deli', level: 1, type: 'say', target: 'Can I pay by card?', accept: ['Can I pay with card', 'Can I use my card', 'Do you take cards'], bn: 'কার্ডে দিতে পারি?' },
+  { id: 'deli-b6', place: 'deli', level: 1, type: 'say', target: "No, I'm all set. Thanks!", accept: ["No that's all thanks", "I'm all set thank you", 'No thank you that is it'], bn: 'না, আর কিছু লাগবে না। ধন্যবাদ!' },
 ];
 
 const WORLD_2: Omit<Card, 'world'>[] = [
@@ -162,6 +170,14 @@ const WORLD_2: Omit<Card, 'world'>[] = [
   { id: 'bus-5', place: 'bus', level: 2, type: 'say', target: 'How often does this bus come?', bn: 'এই বাস কতক্ষণ পরপর আসে?' },
   { id: 'bus-6', place: 'bus', level: 3, type: 'recall', prompt: 'Ask the driver to let you off at the next stop.', target: 'Could you let me off at the next stop?', accept: ['Can you let me off at the next stop'], bn: 'পরের স্টপে আমাকে নামিয়ে দেবেন?' },
   { id: 'bus-7', place: 'bus', level: 3, type: 'listen', target: 'This bus is out of service. Please wait for the next one.', bn: 'এই বাস চলছে না। পরেরটার জন্য অপেক্ষা করুন।' },
+
+  // Boss phrases (learned in the Phrase Pack, used against the Conductor)
+  { id: 'turnstile-b1', place: 'turnstile', level: 2, type: 'say', target: 'Sorry, where can I refill my card?', accept: ['Sorry where can I add money to my card', 'Where can I refill my card'], bn: 'দুঃখিত, কার্ড কোথায় রিফিল করতে পারি?' },
+  { id: 'exit-b2', place: 'exit', level: 2, type: 'say', target: "I'm going to Jackson Heights in Queens.", accept: ["I'm heading to Jackson Heights in Queens", 'I am going to Jackson Heights in Queens'], bn: 'আমি কুইন্সের জ্যাকসন হাইটসে যাচ্ছি।' },
+  { id: 'platform-b3', place: 'platform', level: 2, type: 'say', target: 'How do I get to the uptown platform?', accept: ['How can I get to the uptown platform', 'Where is the uptown platform'], bn: 'আপটাউন প্ল্যাটফর্মে কীভাবে যাব?' },
+  { id: 'train-b4', place: 'train', level: 1, type: 'say', target: 'I need the express train.', accept: ['I need the express', 'The express please'], bn: 'আমার এক্সপ্রেস ট্রেন লাগবে।' },
+  { id: 'train-b5', place: 'train', level: 3, type: 'say', target: 'So should I take the local train?', accept: ['Should I take the local train then', "Then I'll take the local train"], bn: 'তাহলে কি লোকাল ট্রেন নেব?' },
+  { id: 'exit-b6', place: 'exit', level: 1, type: 'say', target: 'Thank you so much, have a good day!', accept: ['Thanks a lot have a good day', 'Thank you have a good one', 'Thanks have a nice day'], bn: 'অনেক ধন্যবাদ, আপনার দিন ভালো কাটুক!' },
 ];
 
 export const CARDS: Card[] = [

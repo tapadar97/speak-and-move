@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BOSSES, BOSS_HP, FAST_MS, HEARTS, ROUND_SECONDS, answer, startBattle, type BattleState } from '../game/bosses';
-import type { WorldId } from '../game/cards';
+import { cardById, type WorldId } from '../game/cards';
 import { matchSpeech } from '../game/match';
 import { sayPhrase, stopSpeaking } from '../speech';
 import { Art, SpeakInput, SpeakerIcon, buzz, PlayerArt } from './kit';
@@ -10,25 +10,37 @@ interface Props {
   sound: boolean;
   bangla: boolean;
   onAnswer: (right: boolean, fast: boolean) => void;
-  onWin: (s: BattleState) => void;
+  onWin: (s: BattleState, hintsUsed: number) => void;
   onExit: () => void;
 }
 
 type Phase = 'intro' | 'line' | 'answer' | 'hit' | 'miss' | 'lost';
+
+const SMALL_WORD = /^(a|an|the|to|of|in|on|at|my|is|i|i'm|and|so|by|for)$/i;
+
+/** Hint ladder: 1 = first two words, 2 = key words only, 3 = the full answer. */
+function hintText(target: string, level: number): string {
+  const words = target.split(/\s+/);
+  if (level === 1) return `${words.slice(0, 2).join(' ')} …`;
+  if (level === 2) return words.map((w) => (SMALL_WORD.test(w.replace(/[^\w']/g, '')) ? '_' : w)).join(' ');
+  return `“${target}”`;
+}
 
 export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Props) {
   const boss = BOSSES[world];
   const [state, setState] = useState<BattleState>(() => startBattle(boss));
   const [phase, setPhase] = useState<Phase>('intro');
   const [left, setLeft] = useState(ROUND_SECONDS);
-  const [hintsLeft, setHintsLeft] = useState(1);
-  const [hintShown, setHintShown] = useState(false);
+  /** Hint ladder for this round: 0 none, 1 first words, 2 key words, 3 full answer. */
+  const [hint, setHint] = useState(0);
+  const [hintsUsed, setHintsUsed] = useState(0);
   const [shake, setShake] = useState(0);
   const askedAt = useRef(0);
   const alive = useRef(true);
 
   const roundIndex = state.queue[0];
   const round = boss.rounds[roundIndex];
+  const answerCard = cardById(round.cardId)!;
 
   useEffect(() => {
     alive.current = true;
@@ -64,7 +76,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
     const next = answer(state, right, ms);
     onAnswer(right, right && ms < FAST_MS);
     setState(next);
-    setHintShown(false);
+    setHint(0);
     if (right) {
       setShake((n) => n + 1);
       buzz(40);
@@ -76,7 +88,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
     window.setTimeout(
       () => {
         if (!alive.current) return;
-        if (next.over === 'won') onWin(next);
+        if (next.over === 'won') onWin(next, hintsUsed);
         else if (next.over === 'lost') setPhase('lost');
         else setPhase('line');
       },
@@ -101,12 +113,13 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
 
   const answered = (alts: string[]) => {
     if (phase !== 'answer') return;
-    resolve(matchSpeech(round.target, round.accept, alts, 2).pass);
+    resolve(matchSpeech(answerCard.target, answerCard.accept, alts, 2).pass);
   };
 
   const restart = () => {
     setState(startBattle(boss));
-    setHintsLeft(1);
+    setHintsUsed(0);
+    setHint(0);
     setPhase('line');
   };
 
@@ -145,7 +158,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
               {ROUND_SECONDS} seconds each. <strong>{BOSS_HP} right answers</strong> win.
             </li>
             <li>
-              {HEARTS} mistakes and you're out. You have 1 hint.
+              {HEARTS} mistakes and you're out. Hints are free, but fewer hints = more stars.
             </li>
           </ul>
           <button type="button" className="btn btn--red btn--big" onClick={() => setPhase('line')}>
@@ -219,16 +232,16 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
         {phase === 'miss' && (
           <div className="miss-box" role="status">
             <p className="miss-box__title">{left <= 0 ? "Time's up!" : 'Not quite!'} −1 ❤️</p>
-            <p>You could say: “{round.target}”</p>
+            <p>You could say: “{answerCard.target}”</p>
           </div>
         )}
         {(phase === 'line' || phase === 'answer') && (
           <>
             <p className="say-label">Say this in English:</p>
             <p className="phrase phrase--bn" lang="bn">
-              {round.bn}
+              {answerCard.bn}
             </p>
-            {hintShown && <p className="hint-card">💡 “{round.target}”</p>}
+            {hint > 0 && <p className="hint-card">💡 {hintText(answerCard.target, hint)}</p>}
             <SpeakInput key={`${roundIndex}-${state.hearts}-${state.hp}`} onAnswer={answered} disabled={phase !== 'answer'} ring={ring} idleLabel={phase === 'line' ? 'Listen…' : `${Math.ceil(left)}s · Tap and answer`} />
           </>
         )}
@@ -249,12 +262,12 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
           type="button"
           className="pill-btn pill-btn--gold"
           onClick={() => {
-            setHintsLeft(0);
-            setHintShown(true);
+            setHint((h) => h + 1);
+            setHintsUsed((n) => n + 1);
           }}
-          disabled={hintsLeft === 0 || phase !== 'answer'}
+          disabled={hint >= 3 || phase !== 'answer'}
         >
-          💡 Hint ({hintsLeft} left)
+          💡 {hint === 0 ? 'Hint' : hint < 3 ? 'More help' : 'Full answer shown'}
         </button>
       </footer>
       {bangla && (

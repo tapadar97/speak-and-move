@@ -9,6 +9,14 @@ A game for practising spoken English in real New York situations.
 5. **Boss battle**: answer the boss in English from the Bangla meaning, against a 20-second timer.
 6. **Review deck** (back after 1, 3 and 7 days) and a **real-life mission** after each race.
 
+### How it teaches (Learn → Practise → Use → Real life → Review)
+- **Phrase Pack**: learn each world's 8 key phrases before racing; the boss uses them.
+- **Mastery steps** per phrase: Say it → Fill the gap → From Bangla → Real talk. Right first time climbs a step; a miss drops one.
+- **Second chances**: a missed phrase comes back 3 turns later in the same race.
+- **Fix it "Why"** in English and Bangla, **tap a red word** to practise it alone, **Listen & answer** replies.
+- **Boss hint ladder**: first words → key words → full answer.
+- **Phrasebook** with mastery stars, **daily goal** and streak, **"How did it go?"** after real-life missions, and a **weekly check-up** showing stat changes.
+
 Character art goes in `public/art/` (see the README there); placeholders show until it exists. Natural voices: `npm run voices` with an ElevenLabs key saved in `~/.config/elevenlabs/key`.
 
 Voice checking uses the browser's built-in speech recognition (Chrome or Safari, https only). You can always type instead.

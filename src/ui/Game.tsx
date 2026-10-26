@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { BOSSES } from '../game/bosses';
 import { HOME, START, botChoice, drawCard, move, preview, stepsFor, type Players } from '../game/board';
-import { LEVEL_NAME, PLACES, STEPS, type Card, type Level, type WorldId } from '../game/cards';
+import { LEVEL_NAME, PLACES, STEPS, cardById, type Card, type Level, type WorldId } from '../game/cards';
+import { dropRepeat, dueRepeat, modeFor, scheduleRepeat, stepOf, type Mastery, type Mode, type Repeat } from '../game/mastery';
 import type { Stats } from '../game/stats';
 import { worldById } from '../game/worlds';
 import { sayPhrase } from '../speech';
@@ -22,10 +23,13 @@ export interface RaceSummary {
 interface Props {
   world: WorldId;
   stats: Stats | null;
+  mastery: Mastery;
+  /** The card level marked "Your level" (bonus XP). */
+  yourLevel: Level;
   sound: boolean;
   bangla: boolean;
   bossBeaten: boolean;
-  onCard: (card: Card, right: boolean, firstTry: boolean) => void;
+  onCard: (card: Card, mode: Mode, right: boolean, firstTry: boolean) => void;
   onFinish: (s: RaceSummary) => void;
   onBoss: () => void;
   onRematch: () => void;
@@ -45,15 +49,17 @@ const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
 
 const TAUNTS = ['Catch me if you can!', "You're fast… for a tourist!", 'Is that all you got?', 'See you at Home!'];
 
-export function Game({ world, stats, sound, bangla, bossBeaten, onCard, onFinish, onBoss, onRematch, onExit }: Props) {
+export function Game({ world, stats, mastery, yourLevel, sound, bangla, bossBeaten, onCard, onFinish, onBoss, onRematch, onExit }: Props) {
   const [players, setPlayers] = useState<Players>({ you: START, bot: START });
   const [phase, setPhase] = useState<Phase>('choose');
-  const [card, setCard] = useState<Card | null>(null);
+  const [card, setCard] = useState<{ card: Card; mode: Mode; step: number; again: boolean; level: Level } | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const [winner, setWinner] = useState<'you' | 'bot' | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
   const [taunt, setTaunt] = useState(TAUNTS[0]);
   const recent = useRef<string[]>([]);
+  const repeats = useRef<Repeat[]>([]);
+  const turn = useRef(0);
   const summary = useRef<RaceSummary>({ won: false, attempts: 0, firstTry: 0, coins: 0, xp: 0, mistakes: [], saidRight: [] });
   const alive = useRef(true);
   const playersRef = useRef(players);
@@ -91,10 +97,14 @@ export function Game({ world, stats, sound, bangla, bossBeaten, onCard, onFinish
   };
 
   const choose = (lv: Level) => {
-    // The card comes from the place you're heading to.
-    const c = drawCard(world, lv, Math.min(HOME - 1, players.you + STEPS[lv]), recent.current, stats);
+    turn.current++;
+    // A phrase you missed earlier comes back first; otherwise the card comes
+    // from the place you're heading to.
+    const due = dueRepeat(repeats.current, turn.current);
+    const c = due ? cardById(due.cardId)! : drawCard(world, lv, Math.min(HOME - 1, players.you + STEPS[lv]), recent.current, stats);
     remember(c);
-    setCard(c);
+    const step = stepOf(mastery, c.id);
+    setCard({ card: c, mode: modeFor(c, step), step, again: !!due, level: lv });
     setPhase('card');
   };
 
@@ -129,14 +139,16 @@ export function Game({ world, stats, sound, bangla, bossBeaten, onCard, onFinish
   };
 
   const cardDone = async (d: CardDone) => {
-    const c = card!;
+    const { card: c, mode, level } = card!;
     setCard(null);
     summary.current.attempts++;
-    onCard(c, d.right, d.right && !d.retry);
+    onCard(c, mode, d.right, d.right && !d.retry);
     if (d.right) {
+      repeats.current = dropRepeat(repeats.current, c.id);
       if (!d.retry) summary.current.firstTry++;
       summary.current.coins += c.level;
-      summary.current.xp += 10 * c.level;
+      // Playing at your level earns 50% more XP.
+      summary.current.xp += Math.round(10 * c.level * (level === yourLevel ? 1.5 : 1));
       summary.current.saidRight.push(c.id);
       const steps = stepsFor(c.level, d.retry);
       const r = move(world, players, 'you', steps);
@@ -148,8 +160,9 @@ export function Game({ world, stats, sound, bangla, bossBeaten, onCard, onFinish
       if (r.won) return end('you');
     } else {
       summary.current.mistakes.push(c.id);
+      repeats.current = scheduleRepeat(repeats.current, c.id, turn.current);
       setPhase('moving');
-      setToast({ who: 'you', text: 'No move this time', sub: 'This phrase is saved to your review deck.' });
+      setToast({ who: 'you', text: 'No move this time', sub: 'This phrase comes back in 3 turns. Get it then!' });
       await wait(1100);
       if (!alive.current) return;
     }
@@ -197,7 +210,8 @@ export function Game({ world, stats, sound, bangla, bossBeaten, onCard, onFinish
             <p className="turn-panel__title">Your turn! Pick a card:</p>
             <div className="choices">
               {options.map((o) => (
-                <button key={o.lv} type="button" className={`choice choice--${o.lv}`} onClick={() => choose(o.lv)}>
+                <button key={o.lv} type="button" className={`choice choice--${o.lv} ${o.lv === yourLevel ? 'is-yours' : ''}`} onClick={() => choose(o.lv)}>
+                  {o.lv === yourLevel && <span className="choice__yours">⭐ Your level</span>}
                   <span className="choice__level">{LEVEL_NAME[o.lv].toUpperCase()}</span>
                   <span className="choice__steps">+{STEPS[o.lv]}</span>
                   <span className="choice__icon" aria-hidden="true">
@@ -207,7 +221,7 @@ export function Game({ world, stats, sound, bangla, bossBeaten, onCard, onFinish
                 </button>
               ))}
             </div>
-            <p className="turn-panel__note">Say it right to move. No dice!</p>
+            <p className="turn-panel__note">Say it right to move. ⭐ = your level, +50% XP.</p>
             {bangla && (
               <p className="turn-panel__note bn-line" lang="bn">
                 সঠিক বললেই এগোবেন!
@@ -223,7 +237,19 @@ export function Game({ world, stats, sound, bangla, bossBeaten, onCard, onFinish
         )}
       </section>
 
-      {phase === 'card' && card && <CardSheet key={card.id} card={card} mode="game" sound={sound} bangla={bangla} onDone={cardDone} />}
+      {phase === 'card' && card && (
+        <CardSheet
+          key={`${card.card.id}-${turn.current}`}
+          card={card.card}
+          mode={card.mode}
+          step={card.step}
+          context="game"
+          secondChance={card.again}
+          sound={sound}
+          bangla={bangla}
+          onDone={cardDone}
+        />
+      )}
 
       {confirmExit && (
         <div className="sheet-backdrop" onClick={() => setConfirmExit(false)}>

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { BattleState } from '../game/bosses';
 import { starsFor } from '../game/bosses';
-import { CARDS, type WorldId } from '../game/cards';
+import { CARDS, type Card, type Level, type WorldId } from '../game/cards';
+import { MODE_STAT, afterAnswer, type Mode } from '../game/mastery';
 import { scoreFirstDay } from '../game/firstday';
-import { currentWorld, loadProfile, saveProfile, type Profile } from '../game/profile';
+import { countGood, currentWorld, loadProfile, saveProfile, type Profile } from '../game/profile';
 import { addMistake, dueItems, reviewed, today } from '../game/review';
-import { STAT_FOR, grow, rankIndex, type Stats } from '../game/stats';
+import { grow, rankIndex, type Stats } from '../game/stats';
 import { WORLDS } from '../game/worlds';
 import { BossBattle } from './BossBattle';
 import { CharacterCard } from './CharacterCard';
@@ -13,6 +14,8 @@ import { FirstDay } from './FirstDay';
 import { Game, type RaceSummary } from './Game';
 import { PlayerContext } from './kit';
 import { MapScreen } from './MapScreen';
+import { PhrasePack } from './PhrasePack';
+import { Phrasebook } from './Phrasebook';
 import { PickPlayer } from './PickPlayer';
 import { Review } from './Review';
 import { Title } from './Title';
@@ -27,7 +30,9 @@ type Screen =
   | { name: 'race'; world: WorldId; key: number }
   | { name: 'boss'; world: WorldId; key: number }
   | { name: 'victory'; world: WorldId; stars: number; firstClear: boolean; before: Stats | null; after: Stats | null }
-  | { name: 'review'; ids: string[] };
+  | { name: 'review'; ids: string[]; title?: string; why?: string }
+  | { name: 'pack'; world: WorldId }
+  | { name: 'book' };
 
 /** A phrase you said right, to use in real life; any easy card of the world if none. */
 function pickMission(world: WorldId, said: string[]): string {
@@ -49,6 +54,27 @@ export function App() {
   }, [screen.name]);
 
   const update = (fn: (p: Profile) => Profile) => setProfile(fn);
+
+  /** A good (first-try) answer counts toward the daily goal; meeting it pays 30 coins. */
+  const goodAnswer = (p: Profile): Profile => {
+    const g = countGood(p, day);
+    return { ...p, daily: g.daily, streak: g.streak, coins: p.coins + (g.goalJustMet ? 30 : 0) };
+  };
+
+  /** One answered card anywhere: mastery, stats, review deck and daily goal. */
+  const answered = (p: Profile, card: Card, mode: Mode, right: boolean, firstTry: boolean): Profile => {
+    let next: Profile = {
+      ...p,
+      mastery: afterAnswer(p.mastery, card.id, right, firstTry),
+      stats: right && p.stats ? grow(p.stats, MODE_STAT[mode], firstTry) : p.stats,
+      review: right ? p.review : addMistake(p.review, card.id, day),
+    };
+    if (firstTry) next = goodAnswer(next);
+    return next;
+  };
+
+  /** The card level matched to your rank, marked "Your level" in races. */
+  const yourLevel: Level = rank <= 0 ? 1 : rank <= 2 ? 2 : 3;
 
   /** Remember your stats when you first enter a world, to show growth when you clear it. */
   const enter = (w: WorldId) =>
@@ -103,7 +129,7 @@ export function App() {
             sound={profile.sound}
             bangla={profile.bangla}
             onDone={(results) => {
-              update((p) => ({ ...p, stats: scoreFirstDay(results), firstDayDate: day }));
+              update((p) => ({ ...p, prevStats: p.stats ?? p.prevStats, stats: scoreFirstDay(results), firstDayDate: day }));
               setScreen({ name: 'card', mode: 'result' });
             }}
             onExit={() => setScreen(profile.stats ? { name: 'map' } : { name: 'title' })}
@@ -114,6 +140,7 @@ export function App() {
         return (
           <CharacterCard
             stats={profile.stats!}
+            before={profile.prevStats}
             name={profile.name}
             mode={screen.mode}
             bangla={profile.bangla}
@@ -134,7 +161,25 @@ export function App() {
             onBoss={boss}
             onCard={() => setScreen({ name: 'card', mode: 'view' })}
             onReview={() => setScreen({ name: 'review', ids: dueItems(profile.review, day).map((i) => i.cardId) })}
-            onMissionDone={() => update((p) => ({ ...p, mission: null, missionsDone: p.missionsDone + 1, coins: p.coins + 20 }))}
+            onBook={() => setScreen({ name: 'book' })}
+            onLearn={(w) => setScreen({ name: 'pack', world: w })}
+            onRecheck={() => setScreen({ name: 'firstday' })}
+            onMission={(how) =>
+              update((p) => {
+                const id = p.mission!.cardId;
+                const worked = how === 'worked';
+                return {
+                  ...p,
+                  mission: null,
+                  missionsDone: p.missionsDone + 1,
+                  missionLog: { ...p.missionLog, [how]: p.missionLog[how] + 1 },
+                  coins: p.coins + (worked ? 20 : 10),
+                  // Real-life success counts as mastery; a hard time sends it back to practice.
+                  mastery: afterAnswer(p.mastery, id, worked, worked),
+                  review: worked ? p.review : addMistake(p.review, id, day),
+                };
+              })
+            }
             onTitle={() => setScreen({ name: 'title' })}
           />
         );
@@ -146,16 +191,16 @@ export function App() {
             key={screen.key}
             world={w}
             stats={profile.stats}
+            mastery={profile.mastery}
+            yourLevel={yourLevel}
             sound={profile.sound}
             bangla={profile.bangla}
             bossBeaten={profile.worlds[w].stars > 0}
-            onCard={(card, right, firstTry) =>
+            onCard={(card, mode, right, firstTry) =>
               update((p) => ({
-                ...p,
+                ...answered(p, card, mode, right, firstTry),
                 attempts: p.attempts + 1,
                 firstTry: p.firstTry + (firstTry ? 1 : 0),
-                stats: right && p.stats ? grow(p.stats, STAT_FOR[card.type], firstTry) : p.stats,
-                review: right ? p.review : addMistake(p.review, card.id, day),
               }))
             }
             onFinish={(s: RaceSummary) =>
@@ -187,11 +232,11 @@ export function App() {
                 if (!p.stats || !right) return p;
                 let s = grow(p.stats, 'words', true);
                 if (fast) s = grow(s, 'speed', true);
-                return { ...p, stats: s };
+                return goodAnswer({ ...p, stats: s });
               })
             }
-            onWin={(b: BattleState) => {
-              const stars = starsFor(b);
+            onWin={(b: BattleState, hintsUsed: number) => {
+              const stars = starsFor(b, hintsUsed);
               const firstClear = profile.worlds[w].stars === 0;
               const reward = WORLDS[w - 1].reward!;
               const before = profile.worlds[w].startStats;
@@ -222,7 +267,7 @@ export function App() {
             after={screen.after}
             missionCardId={profile.mission?.cardId ?? null}
             bangla={profile.bangla}
-            onNext={() => race(next)}
+            onNext={() => (profile.packDone[next] ? race(next) : setScreen({ name: 'pack', world: next }))}
             onHome={() => setScreen({ name: 'map' })}
           />
         );
@@ -232,9 +277,54 @@ export function App() {
         return (
           <Review
             ids={screen.ids}
+            mastery={profile.mastery}
             sound={profile.sound}
             bangla={profile.bangla}
-            onResult={(id, right) => update((p) => ({ ...p, review: reviewed(p.review, id, right, day) }))}
+            title={screen.title}
+            why={screen.why}
+            onResult={(card, mode, right, firstTry) =>
+              update((p) => {
+                const next = answered(p, card, mode, right, firstTry);
+                // A phrase already in the review deck moves along its 1/3/7-day schedule.
+                return p.review[card.id] ? { ...next, review: reviewed(p.review, card.id, firstTry, day) } : next;
+              })
+            }
+            onExit={() => setScreen(screen.title === 'Practice' ? { name: 'book' } : { name: 'map' })}
+          />
+        );
+
+      case 'pack':
+        return (
+          <PhrasePack
+            key={screen.world}
+            world={screen.world}
+            sound={profile.sound}
+            bangla={profile.bangla}
+            onPhrase={(id, right) =>
+              update((p) => {
+                // Learning a phrase moves it to "Seen"; never lowers mastery you already have.
+                const mastery = right ? { ...p.mastery, [id]: Math.max(p.mastery[id] ?? 0, 1) } : p.mastery;
+                return right ? goodAnswer({ ...p, mastery }) : p;
+              })
+            }
+            onDone={() => {
+              const w = screen.world;
+              update((p) => ({ ...p, packDone: { ...p.packDone, [w]: true } }));
+              race(w);
+            }}
+            onExit={() => setScreen({ name: 'map' })}
+          />
+        );
+
+      case 'book':
+        return (
+          <Phrasebook
+            mastery={profile.mastery}
+            bangla={profile.bangla}
+            startWorld={currentWorld(profile, rank)}
+            onPractise={(ids) =>
+              setScreen({ name: 'review', ids, title: 'Practice', why: 'Get it right first time to move it up a star.' })
+            }
             onExit={() => setScreen({ name: 'map' })}
           />
         );

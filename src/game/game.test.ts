@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARDS, PLACES, type Level, type WorldId } from './cards';
+import { CARDS, PLACES, cardById, type Level, type WorldId } from './cards';
 import { HOME, START, botChoice, cellOf, drawCard, expressOf, move, placeAt, preview } from './board';
 import { BOSSES, BOSS_HP, HEARTS, answer, startBattle, starsFor } from './bosses';
 import { SCENES, exampleOf, nextLevel, scoreFirstDay, talkCounts, type SceneResult } from './firstday';
@@ -8,6 +8,9 @@ import { NEW_PROFILE, currentWorld, isUnlocked } from './profile';
 import { addMistake, dueItems, reviewed } from './review';
 import { grow, rankIndex, typeWeights, weakest, type Stats } from './stats';
 import { WORLDS } from './worlds';
+import { PACKS, REPLIES, SITUATIONS, WHY } from './learning';
+import { afterAnswer, dueRepeat, expected, gapIndexes, gapText, modeFor, scheduleRepeat, stepOf } from './mastery';
+import { DAILY_GOAL, countGood, liveStreak, recheckDue } from './profile';
 
 const WORLD_IDS: WorldId[] = [1, 2];
 
@@ -205,8 +208,9 @@ describe('boss battle', () => {
   it('every boss line target passes when said exactly', () => {
     for (const b of Object.values(BOSSES)) {
       for (const r of b.rounds) {
-        expect(matchSpeech(r.target, r.accept, [r.target], 2).pass, r.target).toBe(true);
-        for (const a of r.accept ?? []) expect(matchSpeech(r.target, r.accept, [a], 2).pass, a).toBe(true);
+        const c = cardById(r.cardId)!;
+        expect(c, r.cardId).toBeTruthy();
+        expect(matchSpeech(c.target, c.accept, [c.target], 2).pass, c.target).toBe(true);
       }
       expect(b.rounds.length).toBeGreaterThanOrEqual(BOSS_HP);
     }
@@ -248,5 +252,98 @@ describe('review deck', () => {
     d = reviewed(d, 'deli-1', true, '2026-10-28');
     d = reviewed(d, 'deli-1', true, '2026-11-04');
     expect(d['deli-1']).toBeUndefined();
+  });
+});
+
+describe('teaching content', () => {
+  it('every card has a real-life situation for its last step', () => {
+    for (const c of CARDS) expect(SITUATIONS[c.id] ?? c.prompt, c.id).toBeTruthy();
+  });
+
+  it('every Fix it card explains why, in English and Bangla', () => {
+    for (const c of CARDS.filter((x) => x.type === 'fix')) {
+      expect(WHY[c.id]?.en, c.id).toBeTruthy();
+      expect(WHY[c.id]?.bn, c.id).toBeTruthy();
+    }
+  });
+
+  it('listen replies accept their own answers', () => {
+    for (const [id, r] of Object.entries(REPLIES)) {
+      expect(cardById(id)?.type, id).toBe('listen');
+      const said = r.target.replace(/XNUM/g, '12');
+      expect(matchSpeech(r.target, r.accept, [said], 2).pass, id).toBe(true);
+      for (const a of r.accept ?? []) expect(matchSpeech(r.target, r.accept, [a.replace(/XNUM/g, '12')], 2).pass, `${id}: ${a}`).toBe(true);
+    }
+  });
+
+  it('each world has an 8-phrase pack from its own cards, and the boss uses the first 6', () => {
+    for (const w of WORLD_IDS) {
+      expect(PACKS[w]).toHaveLength(8);
+      for (const id of PACKS[w]) expect(cardById(id)?.world, id).toBe(w);
+      expect(BOSSES[w].rounds.map((r) => r.cardId)).toEqual(PACKS[w].slice(0, 6));
+    }
+  });
+});
+
+describe('mastery steps', () => {
+  const say = cardById('deli-1')!;
+  const fix = cardById('deli-5')!;
+  const listen = cardById('deli-4')!;
+
+  it('the card gives less help as you climb', () => {
+    expect([0, 1, 2, 3].map((s) => modeFor(say, s))).toEqual(['say', 'gap', 'bangla', 'situation']);
+    expect([0, 1, 2, 3].map((s) => modeFor(fix, s))).toEqual(['fix', 'fix', 'bangla', 'situation']);
+    expect(modeFor(listen, 1)).toBe('answer');
+  });
+
+  it('right first time climbs, a miss drops, a second-try save holds', () => {
+    let m = afterAnswer({}, 'deli-1', true, true);
+    expect(stepOf(m, 'deli-1')).toBe(1);
+    m = afterAnswer(m, 'deli-1', true, false);
+    expect(stepOf(m, 'deli-1')).toBe(1);
+    m = afterAnswer(m, 'deli-1', false, false);
+    expect(stepOf(m, 'deli-1')).toBe(0);
+    m = afterAnswer(m, 'deli-1', false, false);
+    expect(stepOf(m, 'deli-1')).toBe(0);
+  });
+
+  it('Listen & answer checks the reply, not the line you heard', () => {
+    const e = expected(listen, 'answer');
+    expect(e.target).toBe(REPLIES['deli-4'].target);
+    expect(expected(fix, 'fix').strict).toBe(true);
+  });
+
+  it('gap blanks 1–2 key words and keeps the rest', () => {
+    expect(gapIndexes('Can I get a coffee, please?')).toHaveLength(1);
+    expect(gapText('Can I get a coffee, please?')).toBe('Can I get a ____, please?');
+    expect(gapIndexes('Take one pill twice a day after meals.')).toHaveLength(2);
+    for (const c of CARDS) expect(gapText(c.target), c.id).toContain('____');
+  });
+
+  it('a missed card comes back 3 turns later, once', () => {
+    let list = scheduleRepeat([], 'deli-1', 2);
+    list = scheduleRepeat(list, 'deli-1', 3);
+    expect(list).toHaveLength(1);
+    expect(dueRepeat(list, 4)).toBeNull();
+    expect(dueRepeat(list, 5)?.cardId).toBe('deli-1');
+  });
+});
+
+describe('daily goal, streak and re-check', () => {
+  it('meeting the goal on consecutive days builds a streak', () => {
+    let p = { ...NEW_PROFILE };
+    const day1 = '2026-10-26';
+    for (let i = 0; i < DAILY_GOAL; i++) p = { ...p, ...countGood(p, day1) };
+    expect(p.streak).toEqual({ last: day1, days: 1 });
+    const day2 = '2026-10-27';
+    for (let i = 0; i < DAILY_GOAL; i++) p = { ...p, ...countGood(p, day2) };
+    expect(p.streak.days).toBe(2);
+    expect(liveStreak(p, '2026-10-29')).toBe(0);
+  });
+
+  it('the weekly check is due 7 days after the last one', () => {
+    const p = { ...NEW_PROFILE, firstDayDate: '2026-10-20' };
+    expect(recheckDue(p, '2026-10-26')).toBe(false);
+    expect(recheckDue(p, '2026-10-27')).toBe(true);
   });
 });
