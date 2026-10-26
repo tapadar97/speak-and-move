@@ -467,6 +467,15 @@ p {
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
 }
 
+.credit {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.credit a {
+  color: inherit;
+}
+
 /* ---------- Sheets ---------- */
 
 .sheet-backdrop {

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { loadManifest } from '../speech';
 import { Art } from './kit';
 
 interface Props {
@@ -11,6 +12,11 @@ interface Props {
 
 export function Title({ coins, sound, bangla, onPlay, onToggle }: Props) {
   const [settings, setSettings] = useState(false);
+  const [voiced, setVoiced] = useState(false);
+
+  useEffect(() => {
+    loadManifest().then((m) => setVoiced(!!m));
+  }, []);
   return (
     <div className="screen title-screen">
       <div className="sky-scene" aria-hidden="true">
@@ -46,6 +52,14 @@ export function Title({ coins, sound, bangla, onPlay, onToggle }: Props) {
         <p className="bn-line" lang="bn">
           চলো শুরু করি!
         </p>
+        {voiced && (
+          <p className="credit">
+            Voices by{' '}
+            <a href="https://elevenlabs.io" target="_blank" rel="noreferrer">
+              ElevenLabs
+            </a>
+          </p>
+        )}
       </div>
 
       {settings && (

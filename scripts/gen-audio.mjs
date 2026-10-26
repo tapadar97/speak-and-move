@@ -14,13 +14,14 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { BOSSES } from '../src/game/bosses.ts';
 import { CARDS } from '../src/game/cards.ts';
 import { SCENES } from '../src/game/firstday.ts';
 
 const API = 'https://api.elevenlabs.io/v1';
 const MODEL = 'eleven_multilingual_v2';
-const OUT = new URL('../public/audio/', import.meta.url).pathname;
+const OUT = fileURLToPath(new URL('../public/audio/', import.meta.url));
 const args = new Set(process.argv.slice(2));
 
 /**
