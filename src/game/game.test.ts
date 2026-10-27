@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { CARDS, PLACES, cardById, type Level, type WorldId } from './cards';
+import { CARDS, PLACES, WORLD_IDS, cardById, type Level } from './cards';
 import { HOME, START, botChoice, cellOf, drawCard, expressOf, move, placeAt, preview } from './board';
-import { BOSSES, BOSS_HP, HEARTS, answer, startBattle, starsFor } from './bosses';
+import { BOSSES, NATIVE_BOSSES, BOSS_HP, HEARTS, answer, startBattle, starsFor } from './bosses';
 import { SCENES, exampleOf, nextLevel, scoreFirstDay, talkCounts, type SceneResult } from './firstday';
 import { matchSpeech, normalize } from './match';
 import { NEW_PROFILE, currentWorld, isUnlocked } from './profile';
 import { addMistake, dueItems, reviewed } from './review';
 import { grow, rankIndex, typeWeights, weakest, type Stats } from './stats';
 import { WORLDS } from './worlds';
-import { PACKS, REPLIES, SITUATIONS, WHY } from './learning';
-import { afterAnswer, dueRepeat, expected, gapIndexes, gapText, modeFor, scheduleRepeat, stepOf } from './mastery';
+import { NATIVE_PACKS, PACKS, REPLIES, SITUATIONS, WHY } from './learning';
+import { LADDER, ladderRank, nextRung } from './ladder';
+import type { WorldId } from './cards';
+import { situationOf, afterAnswer, dueRepeat, expected, gapIndexes, gapText, modeFor, scheduleRepeat, stepOf } from './mastery';
 import { DAILY_GOAL, countGood, liveStreak, recheckDue, weekDays } from './profile';
 
-const WORLD_IDS: WorldId[] = [1, 2];
 
 describe('phrase cards', () => {
   it('every place used on a board has easy, medium and hard cards', () => {
@@ -94,7 +95,7 @@ describe('board', () => {
       expect(WORLDS[w - 1].layout).toHaveLength(18);
       for (const [from, to] of Object.entries(expressOf(w))) {
         expect(Number(to)).toBeGreaterThan(Number(from));
-        expect(['subway', 'train']).toContain(placeAt(w, Number(from)));
+        expect(['subway', 'train', 'taxi']).toContain(placeAt(w, Number(from)));
       }
     }
   });
@@ -206,7 +207,7 @@ describe('stats and ranks', () => {
 
 describe('boss battle', () => {
   it('every boss line target passes when said exactly', () => {
-    for (const b of Object.values(BOSSES)) {
+    for (const b of [...Object.values(BOSSES), ...Object.values(NATIVE_BOSSES)]) {
       for (const r of b.rounds) {
         const c = cardById(r.cardId)!;
         expect(c, r.cardId).toBeTruthy();
@@ -239,8 +240,37 @@ describe('worlds and progress', () => {
   it('World 2 opens after clearing World 1, or for a Local rank or higher', () => {
     expect(isUnlocked(NEW_PROFILE, 2, 1)).toBe(false);
     expect(isUnlocked(NEW_PROFILE, 2, 2)).toBe(true);
-    const cleared = { ...NEW_PROFILE, worlds: { ...NEW_PROFILE.worlds, 1: { raceWins: 1, stars: 2, startStats: null } } };
-    expect(currentWorld(cleared, 0)).toBe(2);
+    const cleared = { ...NEW_PROFILE, worlds: { ...NEW_PROFILE.worlds, 1: { raceWins: 1, stars: 2, nativeStars: 0, startStats: null } } };
+    // The Native round comes before moving on…
+    expect(currentWorld(cleared, 0)).toBe(1);
+    const native = { ...cleared, worlds: { ...cleared.worlds, 1: { ...cleared.worlds[1], nativeStars: 1 } } };
+    expect(currentWorld(native, 0)).toBe(2);
+  });
+
+  it('later worlds need the boss before them; a strong level check skips to World 3 at most', () => {
+    expect(isUnlocked(NEW_PROFILE, 3, 3)).toBe(true);
+    expect(isUnlocked(NEW_PROFILE, 4, 4)).toBe(false);
+    const w3 = { ...NEW_PROFILE, worlds: { ...NEW_PROFILE.worlds, 3: { ...NEW_PROFILE.worlds[3], stars: 1 } } };
+    expect(isUnlocked(w3, 4, 0)).toBe(true);
+    expect(isUnlocked(w3, 5, 0)).toBe(false);
+  });
+
+  it('the rank ladder climbs from Newcomer to Expert New Yorker through every boss and Native round', () => {
+    expect(LADDER[ladderRank(NEW_PROFILE)].name).toBe('Newcomer');
+    const beat = (p: typeof NEW_PROFILE, w: WorldId, nativeToo = false) => ({
+      ...p,
+      worlds: { ...p.worlds, [w]: { ...p.worlds[w], stars: 1, nativeStars: nativeToo ? 1 : 0 } },
+    });
+    let p = beat(NEW_PROFILE, 1);
+    expect(LADDER[ladderRank(p)].name).toBe('Local');
+    p = beat(p, 2);
+    expect(ladderRank(p)).toBe(1); // still needs World 1's Native round
+    expect(nextRung(p)?.todo.id).toBe('native-1');
+    p = beat(p, 1, true);
+    expect(LADDER[ladderRank(p)].name).toBe('Regular');
+    for (const w of WORLD_IDS) p = beat(p, w, true);
+    expect(LADDER[ladderRank(p)].name).toBe('Expert New Yorker');
+    expect(nextRung(p)).toBeNull();
   });
 });
 
@@ -258,6 +288,7 @@ describe('review deck', () => {
 describe('teaching content', () => {
   it('every card has a real-life situation for its last step', () => {
     for (const c of CARDS) expect(SITUATIONS[c.id] ?? c.prompt, c.id).toBeTruthy();
+    for (const c of CARDS) expect(situationOf(c), c.id).not.toBe(c.bn);
   });
 
   it('every Fix it card explains why, in English and Bangla', () => {
@@ -281,6 +312,19 @@ describe('teaching content', () => {
       expect(PACKS[w]).toHaveLength(8);
       for (const id of PACKS[w]) expect(cardById(id)?.world, id).toBe(w);
       expect(BOSSES[w].rounds.map((r) => r.cardId)).toEqual(PACKS[w].slice(0, 6));
+    }
+  });
+
+  it('each world has an 8-phrase Native pack of slang cards, kept out of races; the Native boss uses the first 6', () => {
+    for (const w of WORLD_IDS) {
+      expect(NATIVE_PACKS[w]).toHaveLength(8);
+      for (const id of NATIVE_PACKS[w]) {
+        const c = cardById(id)!;
+        expect(c.world, id).toBe(w);
+        expect(WORLDS[w - 1].layout, id).toContain(c.place);
+      }
+      expect(NATIVE_BOSSES[w].rounds.map((r) => r.cardId)).toEqual(NATIVE_PACKS[w].slice(0, 6));
+      for (let i = 0; i < 40; i++) expect(drawCard(w, 3, 2 + (i % 18), []).native, `W${w}`).toBeFalsy();
     }
   });
 });

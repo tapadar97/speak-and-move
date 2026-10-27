@@ -13,7 +13,8 @@ export const STAT_INFO: Record<StatKey, { name: string; icon: string; color: str
   speed: { name: 'Speed', icon: '⚡', color: '#3fd4ff', what: 'Answering without long pauses' },
 };
 
-export const RANKS = ['Tourist', 'Rookie', 'Local', 'Real New Yorker', 'Legend'] as const;
+/** Your English level from the level check (separate from the New York rank ladder). */
+export const RANKS = ['Beginner', 'Elementary', 'Intermediate', 'Upper intermediate', 'Advanced'] as const;
 export type Rank = (typeof RANKS)[number];
 const RANK_FLOOR = [0, 30, 50, 65, 80];
 

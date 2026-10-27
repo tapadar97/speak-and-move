@@ -8,6 +8,8 @@ import { SpeakerIcon } from './kit';
 
 interface Props {
   mastery: Mastery;
+  /** Worlds you can open; the tabs show only these. */
+  worlds: WorldId[];
   bangla: boolean;
   startWorld: WorldId;
   onPractise: (ids: string[]) => void;
@@ -15,7 +17,7 @@ interface Props {
 }
 
 /** Every phrase with its mastery stars, weakest first, so you can see what you know. */
-export function Phrasebook({ mastery, bangla, startWorld, onPractise, onExit }: Props) {
+export function Phrasebook({ mastery, worlds, bangla, startWorld, onPractise, onExit }: Props) {
   const [world, setWorld] = useState<WorldId>(startWorld);
   const cards = CARDS.filter((c) => c.world === world).sort((a, b) => stepOf(mastery, a.id) - stepOf(mastery, b.id) || a.id.localeCompare(b.id));
   const mastered = cards.filter((c) => stepOf(mastery, c.id) >= MAX_STEP).length;
@@ -38,8 +40,8 @@ export function Phrasebook({ mastery, bangla, startWorld, onPractise, onExit }: 
         </div>
       </header>
 
-      <div className="tabs" role="tablist" aria-label="World">
-        {([1, 2] as WorldId[]).map((w) => (
+      <div className="tabs tabs--scroll" role="tablist" aria-label="World">
+        {worlds.map((w) => (
           <button key={w} type="button" role="tab" aria-selected={world === w} className={`tab ${world === w ? 'is-on' : ''}`} onClick={() => setWorld(w)}>
             {WORLDS[w - 1].icon} {WORLDS[w - 1].name}
           </button>

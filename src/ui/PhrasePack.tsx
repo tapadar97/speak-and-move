@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { BOSSES } from '../game/bosses';
+import { BOSSES, NATIVE_BOSSES, NATIVE_RATE } from '../game/bosses';
 import { PLACES, cardById, type WorldId } from '../game/cards';
-import { PACKS } from '../game/learning';
+import { NATIVE_PACKS, PACKS } from '../game/learning';
 import { matchSpeech, type MatchResult } from '../game/match';
 import { situationOf } from '../game/mastery';
 import { sayPhrase, stopSpeaking } from '../speech';
@@ -9,6 +9,8 @@ import { Art, SpeakInput, SpeakerIcon, buzz } from './kit';
 
 interface Props {
   world: WorldId;
+  /** The Native round's slang pack instead of the world's first pack. */
+  native?: boolean;
   sound: boolean;
   bangla: boolean;
   /** Each phrase: did you say it right? */
@@ -18,16 +20,18 @@ interface Props {
 }
 
 /** Learn a world's 8 key phrases before you race: hear it, see it, say it. */
-export function PhrasePack({ world, sound, bangla, onPhrase, onDone, onExit }: Props) {
-  const ids = PACKS[world];
-  const boss = BOSSES[world];
+export function PhrasePack({ world, native = false, sound, bangla, onPhrase, onDone, onExit }: Props) {
+  const ids = native ? NATIVE_PACKS[world] : PACKS[world];
+  const boss = native ? NATIVE_BOSSES[world] : BOSSES[world];
+  // Native phrases are heard at real New York speed.
+  const speed = native ? NATIVE_RATE : 0.95;
   const [i, setI] = useState(-1);
   const [result, setResult] = useState<MatchResult | null>(null);
   const card = i >= 0 && i < ids.length ? cardById(ids[i])! : null;
 
   useEffect(() => {
     if (card && sound) {
-      const t = window.setTimeout(() => sayPhrase(card.id, card.target, 'card', 0.95), 300);
+      const t = window.setTimeout(() => sayPhrase(card.id, card.target, 'card', speed), 300);
       return () => window.clearTimeout(t);
     }
     return undefined;
@@ -57,14 +61,22 @@ export function PhrasePack({ world, sound, bangla, onPhrase, onDone, onExit }: P
           <div className="street" />
         </div>
         <div className="intro-card">
-          <p className="eyebrow">World {world} · Phrase Pack</p>
-          <h1 className="display">Learn before you play</h1>
-          <p>
-            8 phrases you'll need here. Hear each one, then say it once. You'll use the first 6 to beat <strong>{boss.name}</strong>.
+          <p className="eyebrow">
+            World {world} · {native ? 'Native round' : 'Phrase Pack'}
           </p>
+          <h1 className="display">{native ? 'Talk like a local' : 'Learn before you play'}</h1>
+          {native ? (
+            <p>
+              8 phrases real New Yorkers say: slang, short answers, real speed. Learn them, then face <strong>{boss.name}</strong> with no hints and only 12 seconds.
+            </p>
+          ) : (
+            <p>
+              8 phrases you'll need here. Hear each one, then say it once. You'll use the first 6 to beat <strong>{boss.name}</strong>.
+            </p>
+          )}
           {bangla && (
             <p className="bn-line" lang="bn">
-              খেলার আগে ৮টা বাক্য শিখে নিন। শুনুন, তারপর একবার বলুন।
+              {native ? 'নিউ ইয়র্কের মানুষ যেভাবে কথা বলে, সেই ৮টা বাক্য শিখুন।' : 'খেলার আগে ৮টা বাক্য শিখে নিন। শুনুন, তারপর একবার বলুন।'}
             </p>
           )}
           <Art name={boss.art} fallback={boss.icon} className="pack-boss" />
@@ -89,9 +101,13 @@ export function PhrasePack({ world, sound, bangla, onPhrase, onDone, onExit }: P
         <div className="intro-card">
           <div className="confetti" aria-hidden="true" />
           <h1 className="display">8 phrases learned!</h1>
-          <p>Now use them. Each time a phrase comes back, it gets a little harder, until you can say it from memory.</p>
+          {native ? (
+            <p>Now the real test. {boss.name} talks fast and won't wait. Answer from the situation, in English.</p>
+          ) : (
+            <p>Now use them. Each time a phrase comes back, it gets a little harder, until you can say it from memory.</p>
+          )}
           <button type="button" className="btn btn--go btn--big" onClick={onDone}>
-            Start the race
+            {native ? `Face ${boss.name}` : 'Start the race'}
           </button>
         </div>
       </div>
@@ -132,7 +148,7 @@ export function PhrasePack({ world, sound, bangla, onPhrase, onDone, onExit }: P
           </p>
         )}
         <div className="row">
-          <button type="button" className="pill-btn" onClick={() => sayPhrase(card.id, card.target, 'card', 0.95)}>
+          <button type="button" className="pill-btn" onClick={() => sayPhrase(card.id, card.target, 'card', speed)}>
             <SpeakerIcon /> Hear it
           </button>
           <button type="button" className="pill-btn pill-btn--soft" onClick={() => sayPhrase(card.id, card.target, 'card', 0.6)}>
@@ -150,7 +166,7 @@ export function PhrasePack({ world, sound, bangla, onPhrase, onDone, onExit }: P
                 </span>
               ))}
             </p>
-            {!result.pass && <p className="hint-line">No problem. You'll practise it again in the race.</p>}
+            {!result.pass && <p className="hint-line">{native ? 'No problem. Hear it again, then try the fight.' : "No problem. You'll practise it again in the race."}</p>}
             <button type="button" className="btn btn--go btn--big" onClick={next}>
               {i + 1 < ids.length ? 'Next phrase' : 'Finish'}
             </button>

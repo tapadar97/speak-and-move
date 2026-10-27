@@ -235,7 +235,7 @@ export async function sayPhrase(cardId: string, text: string, who: 'card' | 'may
   stopSpeaking();
   const m = await loadManifest();
   if (m?.cards.includes(cardId)) {
-    const clipRate = rate < 0.8 ? 0.72 : rate < 0.95 ? 0.9 : 1;
+    const clipRate = rate < 0.8 ? 0.72 : rate < 0.95 ? 0.9 : rate > 1.05 ? rate : 1;
     if (await playFile(`audio/${who}/${cardId}.mp3`, clipRate)) return;
   }
   await speak(text, rate);

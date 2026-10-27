@@ -416,5 +416,3 @@ export function TalkInput({ limit = 30, onDone }: { limit?: number; onDone: (r: 
   );
 }
 
-/** Plain-text name for a rank's badge. */
-export const RANK_ICONS = ['📸', '🎟️', '🏠', '🗽', '👑'];

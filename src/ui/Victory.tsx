@@ -1,4 +1,5 @@
-import { BOSSES } from '../game/bosses';
+import { BOSSES, NATIVE_BOSSES } from '../game/bosses';
+import type { Rung } from '../game/ladder';
 import { PLACES, cardById, type WorldId } from '../game/cards';
 import { STAT_INFO, STAT_KEYS, type Stats } from '../game/stats';
 import { WORLDS, isPlayable } from '../game/worlds';
@@ -6,6 +7,12 @@ import { Art, PlayerArt } from './kit';
 
 interface Props {
   world: WorldId;
+  /** A Native round win rather than the world's boss. */
+  native: boolean;
+  /** The new rank, when this win moved you up the ladder. */
+  rankUp: Rung | null;
+  /** This was the last step: you're an Expert New Yorker. */
+  expert: boolean;
   stars: number;
   firstClear: boolean;
   before: Stats | null;
@@ -13,13 +20,15 @@ interface Props {
   missionCardId: string | null;
   bangla: boolean;
   onNext: () => void;
+  /** After a boss: go on to this world's Native round. */
+  onNative: () => void;
   onHome: () => void;
 }
 
-export function Victory({ world, stars, firstClear, before, after, missionCardId, bangla, onNext, onHome }: Props) {
+export function Victory({ world, native, rankUp, expert, stars, firstClear, before, after, missionCardId, bangla, onNext, onNative, onHome }: Props) {
   const w = WORLDS[world - 1];
-  const reward = w.reward!;
-  const boss = BOSSES[world];
+  const reward = native ? w.nativeReward! : w.reward!;
+  const boss = native ? NATIVE_BOSSES[world] : BOSSES[world];
   const mission = missionCardId ? cardById(missionCardId) : null;
   const next = WORLDS[world];
   const ups = before && after ? STAT_KEYS.filter((k) => after[k] > before[k]) : [];
@@ -27,7 +36,7 @@ export function Victory({ world, stars, firstClear, before, after, missionCardId
   return (
     <div className={`screen victory boss--w${world}`}>
       <div className="confetti" aria-hidden="true" />
-      <h1 className="victory__title">WORLD CLEAR!</h1>
+      <h1 className="victory__title">{expert ? 'EXPERT NEW YORKER!' : native ? 'NATIVE ROUND CLEAR!' : 'WORLD CLEAR!'}</h1>
       <div className="stars" aria-label={`${stars} of 3 stars`}>
         {[1, 2, 3].map((s) => (
           <span key={s} className={s <= stars ? 'is-on' : ''} style={{ animationDelay: `${s * 0.18}s` }}>
@@ -40,6 +49,19 @@ export function Victory({ world, stars, firstClear, before, after, missionCardId
         <PlayerArt pose="cheer" className="victory__hero" />
         <Art name={boss.art} fallback={boss.icon} className="victory__boss" />
       </div>
+
+      {rankUp && (
+        <section className="rank-up" role="status">
+          <span className="rank-up__icon" aria-hidden="true">
+            {rankUp.icon}
+          </span>
+          <div>
+            <p className="rank-up__eyebrow">New rank</p>
+            <p className="rank-up__name">{rankUp.name}</p>
+            <p className="rank-up__about">{rankUp.about}</p>
+          </div>
+        </section>
+      )}
 
       {firstClear && (
         <div className="rewards">
@@ -89,12 +111,26 @@ export function Victory({ world, stars, firstClear, before, after, missionCardId
         </section>
       )}
 
-      {next && isPlayable(next.id) ? (
+      {!native ? (
+        <>
+          <button type="button" className="btn btn--go btn--big" onClick={onNative}>
+            NATIVE ROUND: {NATIVE_BOSSES[world].name.toUpperCase()} →
+          </button>
+          <p className="victory__soon">Real New York speed and slang. Win it to climb the rank ladder.</p>
+          {next && isPlayable(next.id) && (
+            <button type="button" className="link-btn" onClick={onNext}>
+              Skip to {next.name}
+            </button>
+          )}
+        </>
+      ) : next && isPlayable(next.id) ? (
         <button type="button" className="btn btn--go btn--big" onClick={onNext}>
-          NEXT WORLD →
+          NEXT WORLD: {next.name.toUpperCase()} →
         </button>
       ) : (
-        <p className="victory__soon">More worlds are coming soon: {next ? next.name : 'stay tuned'}!</p>
+        <p className="victory__soon">
+          {expert ? 'You beat every boss and every Native round. Now go use it out there, New Yorker.' : 'Finish the other Native rounds to become an Expert New Yorker.'}
+        </p>
       )}
       <button type="button" className="btn btn--blue" onClick={onHome}>
         Back to my journey

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { BOSSES } from '../game/bosses';
+import { BOSSES, NATIVE_BOSSES } from '../game/bosses';
 import { CARDS, type WorldId } from '../game/cards';
 import { MAX_STEP, stepOf } from '../game/mastery';
-import { DAILY_GOAL, goodToday, isUnlocked, liveStreak, recheckDue, weekDays, type Profile } from '../game/profile';
+import { LADDER, ladderRank, nextRung } from '../game/ladder';
+import { DAILY_GOAL, goodToday, isUnlocked, liveStreak, nativeOpen, recheckDue, weekDays, type Profile } from '../game/profile';
 import { dueItems } from '../game/review';
 import { WORLDS, isPlayable } from '../game/worlds';
 import { Art, PlayerArt } from './kit';
@@ -15,6 +16,8 @@ interface Props {
   onLearn: (w: WorldId) => void;
   onRace: (w: WorldId) => void;
   onBoss: (w: WorldId) => void;
+  /** The Native round: its slang pack first, then the fight. */
+  onNative: (w: WorldId) => void;
   onReview: () => void;
   onRecheck: () => void;
   onProfile: () => void;
@@ -68,7 +71,7 @@ function Tile({ label, art, tone, state = null, badge, onClick }: TileProps) {
   );
 }
 
-export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, onReview, onRecheck, onProfile }: Props) {
+export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, onNative, onReview, onRecheck, onProfile }: Props) {
   const [world, setWorld] = useState<WorldId>(current);
   const [picking, setPicking] = useState(false);
   const info = WORLDS[world - 1];
@@ -82,8 +85,13 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
   const packDone = profile.packDone[world];
   const raceDone = prog.raceWins > 0;
   const bossDone = prog.stars > 0;
+  const nativeBoss = NATIVE_BOSSES[world];
+  const nativeDone = prog.nativeStars > 0;
+  const nextWorld = WORLDS[world] && isPlayable(WORLDS[world].id) && isUnlocked(profile, (world + 1) as WorldId, rank) ? WORLDS[world] : null;
+  const myRank = LADDER[ladderRank(profile)];
+  const climb = nextRung(profile);
   // The single next step is marked START, like a lesson path.
-  const next = !packDone ? 'learn' : !raceDone ? 'race' : !bossDone ? 'boss' : null;
+  const next = !packDone ? 'learn' : !raceDone ? 'race' : !bossDone ? 'boss' : !nativeDone ? 'native' : null;
 
   // One clear action at the top of the screen: what to do now, why, and how long.
   const upNext = !packDone
@@ -92,6 +100,10 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
       ? { title: 'Race Maya', why: 'Use your new phrases in real situations. Say it right to move.', time: '5 min', icon: '🏁', go: () => onRace(world) }
       : !bossDone
         ? { title: `Beat ${boss.name}`, why: 'Answer fast, like in a real New York line. Hints if you need them.', time: '3 min', icon: boss.icon, go: () => onBoss(world) }
+        : !nativeDone
+          ? { title: `Native round: ${nativeBoss.name}`, why: 'Real New York speed and slang. 12 seconds, no hints, no Bangla.', time: '4 min', icon: '⚡', go: () => onNative(world) }
+        : nextWorld
+          ? { title: `Go to ${nextWorld.name}`, why: nextWorld.goal ?? '', time: '3 min', icon: nextWorld.icon, go: () => setWorld(nextWorld.id as WorldId) }
         : due
           ? { title: `Review ${due} phrase${due > 1 ? 's' : ''}`, why: 'You missed these before. Saying them again now makes them stick.', time: '2 min', icon: '🔁', go: onReview }
           : { title: 'Race again', why: `${mastered}% mastered. Every right answer moves a phrase up a star.`, time: '5 min', icon: '🏁', go: () => onRace(world) };
@@ -147,6 +159,21 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
         {good >= DAILY_GOAL ? 'Daily goal done. See you tomorrow!' : `Today: ${good} of ${DAILY_GOAL} good answers`}
       </p>
 
+      <button type="button" className="rank-strip" onClick={onProfile} aria-label={`Rank: ${myRank.name}. ${climb ? `Next: ${climb.rung.name}, ${climb.done} of ${climb.total} done` : 'Top rank'}`}>
+        <span className="rank-strip__icon" aria-hidden="true">
+          {myRank.icon}
+        </span>
+        <span className="rank-strip__text">
+          <span className="rank-strip__name">{myRank.name}</span>
+          <span className="rank-strip__next">{climb ? `Next: ${climb.rung.icon} ${climb.rung.name} · ${climb.todo.label}` : 'Top rank. You did it!'}</span>
+        </span>
+        <span className="rank-strip__steps" aria-hidden="true">
+          {LADDER.map((r, i) => (
+            <i key={r.name} className={i <= ladderRank(profile) ? 'is-on' : ''} />
+          ))}
+        </span>
+      </button>
+
       <section className="up-next" aria-labelledby="up-next-title">
         <span className="up-next__icon" aria-hidden="true">
           {upNext.icon}
@@ -197,6 +224,14 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
           state={!raceDone ? 'locked' : bossDone ? 'done' : next === 'boss' ? 'next' : null}
           badge={bossDone ? '★'.repeat(prog.stars) : undefined}
           onClick={() => onBoss(world)}
+        />
+        <Tile
+          label="Native round"
+          tone="mint"
+          art={<span className="tile__emoji">⚡</span>}
+          state={!nativeOpen(profile, world) ? 'locked' : nativeDone ? 'done' : next === 'native' ? 'next' : null}
+          badge={nativeDone ? '★'.repeat(prog.nativeStars) : undefined}
+          onClick={() => onNative(world)}
         />
         <Tile
           label={due ? `Review (${due})` : 'Review'}

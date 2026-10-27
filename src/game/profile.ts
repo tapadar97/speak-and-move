@@ -1,4 +1,4 @@
-import type { WorldId } from './cards';
+import { WORLD_IDS, type WorldId } from './cards';
 import type { Mastery } from './mastery';
 import { addDays } from './review';
 import type { ReviewDeck } from './review';
@@ -15,6 +15,8 @@ export interface WorldProgress {
   raceWins: number;
   /** 0 = boss not beaten yet, else 1–3. */
   stars: number;
+  /** Native round: 0 = not won yet, else 1–3. */
+  nativeStars: number;
   /** Stats when you first entered the world, to show growth on the victory screen. */
   startStats: Stats | null;
 }
@@ -43,6 +45,8 @@ export interface Profile {
   mastery: Mastery;
   /** Phrase Pack finished, per world. */
   packDone: Record<WorldId, boolean>;
+  /** Native round phrase pack finished, per world. */
+  nativePackDone: Record<WorldId, boolean>;
   /** Good answers today, toward the daily goal. */
   daily: { day: string; count: number };
   /** Days in a row the daily goal was met. */
@@ -55,7 +59,8 @@ export interface Profile {
   bangla: boolean;
 }
 
-const freshWorld = (): WorldProgress => ({ raceWins: 0, stars: 0, startStats: null });
+const freshWorld = (): WorldProgress => ({ raceWins: 0, stars: 0, nativeStars: 0, startStats: null });
+const perWorld = <T,>(make: () => T) => Object.fromEntries(WORLD_IDS.map((w) => [w, make()])) as Record<WorldId, T>;
 
 export const NEW_PROFILE: Profile = {
   player: null,
@@ -64,7 +69,7 @@ export const NEW_PROFILE: Profile = {
   xp: 0,
   stats: null,
   firstDayDate: null,
-  worlds: { 1: freshWorld(), 2: freshWorld() },
+  worlds: perWorld(freshWorld),
   outfits: [],
   attempts: 0,
   firstTry: 0,
@@ -73,7 +78,8 @@ export const NEW_PROFILE: Profile = {
   missionsDone: 0,
   missionLog: { worked: 0, unclear: 0, nervous: 0 },
   mastery: {},
-  packDone: { 1: false, 2: false },
+  packDone: perWorld(() => false),
+  nativePackDone: perWorld(() => false),
   daily: { day: '', count: 0 },
   streak: { last: null, days: 0 },
   goalDays: [],
@@ -96,8 +102,10 @@ export function loadProfile(): Profile {
     return {
       ...NEW_PROFILE,
       ...p,
-      worlds: { ...NEW_PROFILE.worlds, ...(p.worlds ?? {}) },
+      // Older saves have fewer worlds and fields: fill in the gaps.
+      worlds: Object.fromEntries(WORLD_IDS.map((w) => [w, { ...freshWorld(), ...(p.worlds?.[w] ?? {}) }])) as Record<WorldId, WorldProgress>,
       packDone: { ...NEW_PROFILE.packDone, ...(p.packDone ?? {}) },
+      nativePackDone: { ...NEW_PROFILE.nativePackDone, ...(p.nativePackDone ?? {}) },
     };
   } catch {
     return NEW_PROFILE;
@@ -112,15 +120,25 @@ export function saveProfile(p: Profile) {
   }
 }
 
-/** A world opens when the one before it is cleared, or when your rank is high enough to skip it. */
+/**
+ * A world opens when the boss before it is beaten. A strong level check can
+ * skip ahead to World 2 (rank 2+) or World 3 (rank 3+), never further.
+ */
 export function isUnlocked(p: Profile, id: WorldId, rank: number): boolean {
   if (id === 1) return true;
-  return p.worlds[1].stars > 0 || rank >= 2;
+  const prev = (id - 1) as WorldId;
+  return p.worlds[prev].stars > 0 || (id <= 3 && rank >= id);
 }
 
-/** The world the PLAY button takes you to. */
+/** The Native round opens once the world's boss is beaten. */
+export const nativeOpen = (p: Profile, id: WorldId) => p.worlds[id].stars > 0;
+
+/** The world the PLAY button takes you to: an unfinished Native round first, else your newest world. */
 export function currentWorld(p: Profile, rank: number): WorldId {
-  return isUnlocked(p, 2, rank) ? 2 : 1;
+  const open = WORLD_IDS.filter((w) => isUnlocked(p, w, rank));
+  const top = open[open.length - 1];
+  const pending = open.find((w) => w < top && p.worlds[w].stars > 0 && p.worlds[w].nativeStars === 0);
+  return pending ?? top;
 }
 
 export const DAILY_GOAL = 10;

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BattleState } from '../game/bosses';
 import { starsFor } from '../game/bosses';
-import { CARDS, type Card, type Level, type WorldId } from '../game/cards';
+import { CARDS, WORLD_IDS, type Card, type Level, type WorldId } from '../game/cards';
+import { EXPERT, LADDER, ladderRank } from '../game/ladder';
 import { MODE_STAT, afterAnswer, type Mode } from '../game/mastery';
 import { scoreFirstDay } from '../game/firstday';
-import { countGood, currentWorld, loadProfile, saveProfile, type Profile } from '../game/profile';
+import { countGood, currentWorld, isUnlocked, loadProfile, saveProfile, type Profile } from '../game/profile';
 import { addMistake, dueItems, reviewed, today } from '../game/review';
 import { grow, rankIndex, type Stats } from '../game/stats';
 import { WORLDS } from '../game/worlds';
@@ -31,10 +32,19 @@ type Screen =
   | { name: 'card'; mode: 'result' | 'view' }
   | { name: 'tab'; tab: Tab }
   | { name: 'race'; world: WorldId; key: number }
-  | { name: 'boss'; world: WorldId; key: number }
-  | { name: 'victory'; world: WorldId; stars: number; firstClear: boolean; before: Stats | null; after: Stats | null }
+  | { name: 'boss'; world: WorldId; key: number; native?: boolean }
+  | {
+      name: 'victory';
+      world: WorldId;
+      native: boolean;
+      rankUp: number | null;
+      stars: number;
+      firstClear: boolean;
+      before: Stats | null;
+      after: Stats | null;
+    }
   | { name: 'review'; ids: string[]; title?: string; why?: string }
-  | { name: 'pack'; world: WorldId };
+  | { name: 'pack'; world: WorldId; native?: boolean };
 
 /** A phrase you said right, to use in real life; any easy card of the world if none. */
 function pickMission(world: WorldId, said: string[]): string {
@@ -125,6 +135,7 @@ export function App() {
     if (!profile.packDone[w]) setScreen({ name: 'pack', world: w });
     else if (profile.worlds[w].raceWins === 0) race(w);
     else if (profile.worlds[w].stars === 0) boss(w);
+    else if (profile.worlds[w].nativeStars === 0) native(w);
     else if (due.length) setScreen({ name: 'review', ids: due.map((i) => i.cardId) });
     else race(w);
   };
@@ -153,6 +164,9 @@ export function App() {
     enter(w);
     setScreen({ name: 'boss', world: w, key: Date.now() });
   };
+  /** The Native round: learn its slang pack once, then fight. */
+  const native = (w: WorldId) =>
+    setScreen(profile.nativePackDone[w] ? { name: 'boss', world: w, key: Date.now(), native: true } : { name: 'pack', world: w, native: true });
 
   return (
     <PlayerContext.Provider value={profile.player ?? 'hero'}>
@@ -235,6 +249,8 @@ export function App() {
         return (
           <CharacterCard
             stats={profile.stats!}
+            profile={profile}
+            ladder={ladderRank(profile)}
             before={profile.prevStats}
             name={profile.name}
             mode={screen.mode}
@@ -257,6 +273,7 @@ export function App() {
               onLearn={(w) => setScreen({ name: 'pack', world: w })}
               onRace={race}
               onBoss={boss}
+              onNative={native}
               onReview={() => setScreen({ name: 'review', ids: dueItems(profile.review, day).map((i) => i.cardId) })}
               onRecheck={() => setScreen({ name: 'firstday' })}
               onProfile={() => setScreen({ name: 'tab', tab: 'progress' })}
@@ -268,6 +285,7 @@ export function App() {
             'phrases',
             <Phrasebook
               mastery={profile.mastery}
+              worlds={WORLD_IDS.filter((w) => isUnlocked(profile, w, rank))}
               bangla={profile.bangla}
               startWorld={currentWorld(profile, rank)}
               onPractise={(ids) => setScreen({ name: 'review', ids, title: 'Practice', why: 'Get it right first time to move it up a star.' })}
@@ -279,6 +297,8 @@ export function App() {
             'progress',
             <CharacterCard
               stats={profile.stats!}
+              profile={profile}
+              ladder={ladderRank(profile)}
               before={profile.prevStats}
               name={profile.name}
               mode="view"
@@ -353,10 +373,12 @@ export function App() {
 
       case 'boss': {
         const w = screen.world;
+        const isNative = !!screen.native;
         return (
           <BossBattle
             key={screen.key}
             world={w}
+            native={isNative}
             sound={profile.sound}
             bangla={profile.bangla}
             onAnswer={(right, fast) =>
@@ -369,18 +391,22 @@ export function App() {
             }
             onWin={(b: BattleState, hintsUsed: number) => {
               const stars = starsFor(b, hintsUsed);
-              const firstClear = profile.worlds[w].stars === 0;
-              const reward = WORLDS[w - 1].reward!;
+              const key = isNative ? 'nativeStars' : 'stars';
+              const firstClear = profile.worlds[w][key] === 0;
+              const reward = isNative ? WORLDS[w - 1].nativeReward! : WORLDS[w - 1].reward!;
               const before = profile.worlds[w].startStats;
               const after = profile.stats;
-              update((p) => ({
+              const won = (p: Profile): Profile => ({
                 ...p,
                 coins: p.coins + (firstClear ? reward.coins : 0),
                 xp: p.xp + (firstClear ? reward.xp : 50),
                 outfits: firstClear && !p.outfits.includes(reward.outfit) ? [...p.outfits, reward.outfit] : p.outfits,
-                worlds: { ...p.worlds, [w]: { ...p.worlds[w], stars: Math.max(p.worlds[w].stars, stars) } },
-              }));
-              setScreen({ name: 'victory', world: w, stars, firstClear, before, after });
+                worlds: { ...p.worlds, [w]: { ...p.worlds[w], [key]: Math.max(p.worlds[w][key], stars) } },
+              });
+              const oldRank = ladderRank(profile);
+              const newRank = ladderRank(won(profile));
+              update(won);
+              setScreen({ name: 'victory', world: w, native: isNative, rankUp: newRank > oldRank ? newRank : null, stars, firstClear, before, after });
             }}
             onExit={() => setScreen({ name: 'tab', tab: 'journey' })}
           />
@@ -393,6 +419,9 @@ export function App() {
         return (
           <Victory
             world={w}
+            native={screen.native}
+            rankUp={screen.rankUp === null ? null : LADDER[screen.rankUp]}
+            expert={screen.rankUp === EXPERT}
             stars={screen.stars}
             firstClear={screen.firstClear}
             before={screen.before}
@@ -400,6 +429,7 @@ export function App() {
             missionCardId={profile.mission?.cardId ?? null}
             bangla={profile.bangla}
             onNext={() => (profile.packDone[next] ? race(next) : setScreen({ name: 'pack', world: next }))}
+            onNative={() => native(w)}
             onHome={() => setScreen({ name: 'tab', tab: 'journey' })}
           />
         );
@@ -428,8 +458,9 @@ export function App() {
       case 'pack':
         return (
           <PhrasePack
-            key={screen.world}
+            key={`${screen.world}-${screen.native ? 'n' : 'p'}`}
             world={screen.world}
+            native={screen.native}
             sound={profile.sound}
             bangla={profile.bangla}
             onPhrase={(id, right) =>
@@ -441,6 +472,11 @@ export function App() {
             }
             onDone={() => {
               const w = screen.world;
+              if (screen.native) {
+                update((p) => ({ ...p, nativePackDone: { ...p.nativePackDone, [w]: true } }));
+                setScreen({ name: 'boss', world: w, key: Date.now(), native: true });
+                return;
+              }
               update((p) => ({ ...p, packDone: { ...p.packDone, [w]: true } }));
               race(w);
             }}

@@ -100,7 +100,7 @@ export function Game({ world, stats, mastery, yourLevel, sound, bangla, bossBeat
   const describe = (who: 'you' | 'bot', r: ReturnType<typeof move>) => {
     const name = who === 'you' ? 'You' : 'Maya';
     if (r.won) return `${name} reached Home!`;
-    if (r.express) return `Express train! ${name} rode from ${r.express.from} to ${r.express.to}.`;
+    if (r.express) return `${world === 5 ? 'Taxi ride' : 'Express train'}! ${name} rode from ${r.express.from} to ${r.express.to}.`;
     if (r.bumped) return who === 'you' ? '💥 You bumped Maya back 2 squares!' : '💥 Maya bumped you back 2 squares!';
     return undefined;
   };
@@ -181,7 +181,7 @@ export function Game({ world, stats, mastery, yourLevel, sound, bangla, bossBeat
   const options = ([1, 2, 3] as Level[]).map((lv) => ({ lv, ...preview(world, players.you, lv, players.bot) }));
   const landLabel = (o: (typeof options)[number]) =>
     o.home ? 'Home!' : o.express ? 'Express!' : o.bump ? 'Bump Maya!' : PLACES[o.place!].name;
-  const landIcon = (o: (typeof options)[number]) => (o.home ? '🏠' : o.express ? '🚄' : o.bump ? '💥' : PLACES[o.place!].icon);
+  const landIcon = (o: (typeof options)[number]) => (o.home ? '🏠' : o.express ? (world === 5 ? '🚖' : '🚄') : o.bump ? '💥' : PLACES[o.place!].icon);
 
   return (
     <div className="screen game">

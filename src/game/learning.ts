@@ -1,3 +1,5 @@
+import { CARDS, WORLD_IDS, type WorldId } from './cards';
+
 /**
  * Teaching content layered on the phrase cards: what situation each phrase is
  * for, why a Fix-it sentence is wrong, and how to reply to what you hear.
@@ -150,7 +152,22 @@ export const REPLIES: Record<string, Reply> = {
 };
 
 /** The 8 phrases you learn before each world's race; the boss uses the first 6. */
-export const PACKS: Record<1 | 2, string[]> = {
+export const PACKS: Record<WorldId, string[]> = {
   1: ['deli-b1', 'deli-b2', 'deli-b3', 'deli-b4', 'deli-b5', 'deli-b6', 'street-2', 'doctor-5'],
   2: ['turnstile-b1', 'exit-b2', 'platform-b3', 'train-b4', 'train-b5', 'exit-b6', 'platform-1', 'transfer-2'],
+  3: ['landlord-b1', 'super-b2', 'super-b3', 'super-b4', 'call311-b5', 'landlord-b6', 'neighbor-5', 'landlord-1'],
+  4: ['interview-b1', 'interview-b2', 'interview-b3', 'interview-b4', 'interview-b5', 'interview-b6', 'interview-6', 'coworker-1'],
+  5: ['restaurant-b1', 'bar-b2', 'restaurant-b3', 'restaurant-b4', 'restaurant-b5', 'bar-b6', 'taxi-1', 'party-5'],
 };
+
+/** The 8 slang and fast-speech phrases for each world's Native round; its boss uses the first 6. */
+export const NATIVE_PACKS: Record<WorldId, string[]> = Object.fromEntries(
+  WORLD_IDS.map((w) => [w, CARDS.filter((c) => c.native && c.world === w).map((c) => c.id)]),
+) as Record<WorldId, string[]>;
+
+// Cards from worlds 3–5 and the Native rounds carry their teaching content inline.
+for (const c of CARDS) {
+  if (c.sit) SITUATIONS[c.id] ??= c.sit;
+  if (c.why) WHY[c.id] ??= c.why;
+  if (c.reply) REPLIES[c.id] ??= c.reply;
+}

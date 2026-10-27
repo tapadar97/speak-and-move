@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { BOSSES, BOSS_HP, FAST_MS, HEARTS, ROUND_SECONDS, answer, startBattle, type BattleState } from '../game/bosses';
+import { BOSSES, BOSS_HP, FAST_MS, HEARTS, NATIVE_BOSSES, NATIVE_RATE, NATIVE_SECONDS, ROUND_SECONDS, answer, startBattle, type BattleState } from '../game/bosses';
 import { cardById, type WorldId } from '../game/cards';
 import { matchSpeech } from '../game/match';
+import { situationOf } from '../game/mastery';
 import { sayPhrase, stopSpeaking } from '../speech';
 import { Art, SpeakInput, SpeakerIcon, buzz, PlayerArt } from './kit';
 
 interface Props {
   world: WorldId;
+  /** Native round: real speed, slang, 12 seconds, no hints, no Bangla. */
+  native?: boolean;
   sound: boolean;
   bangla: boolean;
   onAnswer: (right: boolean, fast: boolean) => void;
@@ -26,11 +29,12 @@ function hintText(target: string, level: number): string {
   return `“${target}”`;
 }
 
-export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Props) {
-  const boss = BOSSES[world];
+export function BossBattle({ world, native = false, sound, bangla, onAnswer, onWin, onExit }: Props) {
+  const boss = native ? NATIVE_BOSSES[world] : BOSSES[world];
+  const ROUND = native ? NATIVE_SECONDS : ROUND_SECONDS;
   const [state, setState] = useState<BattleState>(() => startBattle(boss));
   const [phase, setPhase] = useState<Phase>('intro');
-  const [left, setLeft] = useState(ROUND_SECONDS);
+  const [left, setLeft] = useState(ROUND);
   /** Hint ladder for this round: 0 none, 1 first words, 2 key words, 3 full answer. */
   const [hint, setHint] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
@@ -60,8 +64,8 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
     };
   }, []);
 
-  const playLine = async (rate = 1) => {
-    if (sound) await sayPhrase(`boss-${world}-${roundIndex}`, round.line, 'card', rate);
+  const playLine = async (rate = native ? NATIVE_RATE : 1) => {
+    if (sound) await sayPhrase(`${native ? 'native' : 'boss'}-${world}-${roundIndex}`, round.line, 'card', rate);
   };
 
   // Each round: the boss speaks, then your timer starts.
@@ -72,7 +76,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
       await playLine();
       if (cancelled || !alive.current) return;
       askedAt.current = Date.now();
-      setLeft(ROUND_SECONDS);
+      setLeft(ROUND);
       setPhase('answer');
     })();
     return () => {
@@ -119,7 +123,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
       pausedAt.current = 0;
     }
     const t = window.setInterval(() => {
-      const l = ROUND_SECONDS - (Date.now() - askedAt.current) / 1000;
+      const l = ROUND - (Date.now() - askedAt.current) / 1000;
       setLeft(Math.max(0, l));
       if (l <= 0) {
         window.clearInterval(t);
@@ -153,33 +157,47 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
         r={r}
         className={`timer-ring__fill ${left < 6 ? 'is-low' : ''}`}
         strokeDasharray={circ}
-        strokeDashoffset={circ * (1 - (phase === 'answer' ? left / ROUND_SECONDS : 1))}
+        strokeDashoffset={circ * (1 - (phase === 'answer' ? left / ROUND : 1))}
       />
     </svg>
   );
 
   if (phase === 'intro') {
     return (
-      <div className={`screen boss boss--w${world}`}>
+      <div className={`screen boss boss--w${world} ${native ? 'boss--native' : ''}`}>
         <div className="boss-intro">
-          <p className="eyebrow">Boss battle · World {world}</p>
+          <p className="eyebrow">
+            {native ? 'Native round' : 'Boss battle'} · World {world}
+          </p>
           <Art name={boss.art} fallback={boss.icon} className="boss-intro__art" />
           <h1 className="display">{boss.name}</h1>
           <p className="boss-intro__title">{boss.title}</p>
           <div className="bubble bubble--center">
             <p className="bubble__line">{boss.intro}</p>
           </div>
-          <ul className="boss-rules">
-            <li>
-              Answer in English using the <strong>Bangla meaning</strong>.
-            </li>
-            <li>
-              {ROUND_SECONDS} seconds each. <strong>{BOSS_HP} right answers</strong> win.
-            </li>
-            <li>
-              {HEARTS} mistakes and you're out. Hints are free, but fewer hints = more stars.
-            </li>
-          </ul>
+          {native ? (
+            <ul className="boss-rules">
+              <li>
+                Real New York speed. Answer from the <strong>situation</strong>, in English.
+              </li>
+              <li>
+                Only {ROUND} seconds each. <strong>{BOSS_HP} right answers</strong> win.
+              </li>
+              <li>No hints and no Bangla. {HEARTS} mistakes and you're out.</li>
+            </ul>
+          ) : (
+            <ul className="boss-rules">
+              <li>
+                Answer in English using the <strong>Bangla meaning</strong>.
+              </li>
+              <li>
+                {ROUND} seconds each. <strong>{BOSS_HP} right answers</strong> win.
+              </li>
+              <li>
+                {HEARTS} mistakes and you're out. Hints are free, but fewer hints = more stars.
+              </li>
+            </ul>
+          )}
           <button type="button" className="btn btn--red btn--big" onClick={() => setPhase('line')}>
             FIGHT!
           </button>
@@ -193,7 +211,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
 
   if (phase === 'lost') {
     return (
-      <div className={`screen boss boss--w${world}`}>
+      <div className={`screen boss boss--w${world} ${native ? 'boss--native' : ''}`}>
         <div className="boss-intro">
           <Art name={boss.art} fallback={boss.icon} className="boss-intro__art" />
           <h1 className="display">So close!</h1>
@@ -215,7 +233,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
   }
 
   return (
-    <div className={`screen boss boss--w${world}`}>
+    <div className={`screen boss boss--w${world} ${native ? 'boss--native' : ''}`}>
       <header className="boss-top">
         <button type="button" className="icon-btn" onClick={() => setConfirmExit(true)} aria-label="Leave the battle">
           ←
@@ -256,10 +274,19 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
         )}
         {(phase === 'line' || phase === 'answer') && (
           <>
-            <p className="say-label">Say this in English:</p>
-            <p className="phrase phrase--bn" lang="bn">
-              {answerCard.bn}
-            </p>
+            {native ? (
+              <>
+                <p className="say-label">What do you say?</p>
+                <p className="phrase phrase--situation">{situationOf(answerCard)}</p>
+              </>
+            ) : (
+              <>
+                <p className="say-label">Say this in English:</p>
+                <p className="phrase phrase--bn" lang="bn">
+                  {answerCard.bn}
+                </p>
+              </>
+            )}
             {hint > 0 && <p className="hint-card">💡 {hintText(answerCard.target, hint)}</p>}
             <SpeakInput key={`${roundIndex}-${state.hearts}-${state.hp}`} onAnswer={answered} disabled={phase !== 'answer'} ring={ring} idleLabel={phase === 'line' ? 'Listen…' : `${Math.ceil(left)}s · Tap and answer`} />
           </>
@@ -277,19 +304,23 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
             ))}
           </span>
         </div>
-        <button
-          type="button"
-          className="pill-btn pill-btn--gold"
-          onClick={() => {
-            setHint((h) => h + 1);
-            setHintsUsed((n) => n + 1);
-          }}
-          disabled={hint >= 3 || phase !== 'answer'}
-        >
-          💡 {hint === 0 ? 'Hint' : hint < 3 ? 'More help' : 'Full answer shown'}
-        </button>
+        {native ? (
+          <span className="native-tag">⚡ Native speed</span>
+        ) : (
+          <button
+            type="button"
+            className="pill-btn pill-btn--gold"
+            onClick={() => {
+              setHint((h) => h + 1);
+              setHintsUsed((n) => n + 1);
+            }}
+            disabled={hint >= 3 || phase !== 'answer'}
+          >
+            💡 {hint === 0 ? 'Hint' : hint < 3 ? 'More help' : 'Full answer shown'}
+          </button>
+        )}
       </footer>
-      {bangla && (
+      {bangla && !native && (
         <p className="bn-line boss-bn" lang="bn">
           দ্রুত উত্তর দিন!
         </p>

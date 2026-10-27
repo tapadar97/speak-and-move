@@ -1,7 +1,13 @@
+import { NATIVE, WORLD_3, WORLD_4, WORLD_5 } from './cards-expert';
+
 export type Place =
   | 'deli' | 'subway' | 'pharmacy' | 'laundromat' | 'doctor' | 'street'
-  | 'turnstile' | 'platform' | 'train' | 'transfer' | 'exit' | 'bus';
-export type WorldId = 1 | 2;
+  | 'turnstile' | 'platform' | 'train' | 'transfer' | 'exit' | 'bus'
+  | 'landlord' | 'neighbor' | 'super' | 'mailroom' | 'park' | 'call311'
+  | 'interview' | 'meeting' | 'phonecall' | 'coworker' | 'manager' | 'hrdesk'
+  | 'restaurant' | 'bar' | 'taxi' | 'shop' | 'party' | 'theater';
+export type WorldId = 1 | 2 | 3 | 4 | 5;
+export const WORLD_IDS: WorldId[] = [1, 2, 3, 4, 5];
 export type Level = 1 | 2 | 3;
 /**
  * say    – read the English out loud
@@ -25,6 +31,14 @@ export interface Card {
   bn: string;
   /** fix: the wrong sentence. recall: the situation. */
   prompt?: string;
+  /** The real-life situation, for cards whose prompt doesn't give one. */
+  sit?: string;
+  /** Fix it: why the sentence was wrong. */
+  why?: { en: string; bn: string };
+  /** Listen: the question to answer after hearing the line. */
+  reply?: { ask: string; target: string; accept?: string[] };
+  /** Native round only: slang and real New York speed, not drawn in races. */
+  native?: boolean;
 }
 
 export const PLACES: Record<Place, { name: string; icon: string }> = {
@@ -40,6 +54,24 @@ export const PLACES: Record<Place, { name: string; icon: string }> = {
   transfer: { name: 'Transfer', icon: '🔀' },
   exit: { name: 'Exit', icon: '🪜' },
   bus: { name: 'Bus', icon: '🚌' },
+  landlord: { name: 'Landlord', icon: '🔑' },
+  neighbor: { name: 'Neighbor', icon: '👋' },
+  super: { name: 'Super', icon: '🔧' },
+  mailroom: { name: 'Mailroom', icon: '📦' },
+  park: { name: 'Park', icon: '🌳' },
+  call311: { name: '311 call', icon: '☎️' },
+  interview: { name: 'Interview', icon: '🤝' },
+  meeting: { name: 'Meeting', icon: '📊' },
+  phonecall: { name: 'Phone call', icon: '📞' },
+  coworker: { name: 'Coworker', icon: '☕' },
+  manager: { name: 'Manager', icon: '👔' },
+  hrdesk: { name: 'HR desk', icon: '🗂️' },
+  restaurant: { name: 'Restaurant', icon: '🍝' },
+  bar: { name: 'Bar', icon: '🍸' },
+  taxi: { name: 'Taxi', icon: '🚖' },
+  shop: { name: 'Shop', icon: '🛍️' },
+  party: { name: 'Party', icon: '🎉' },
+  theater: { name: 'Broadway', icon: '🎭' },
 };
 
 export const STEPS: Record<Level, number> = { 1: 1, 2: 2, 3: 3 };
@@ -183,6 +215,10 @@ const WORLD_2: Omit<Card, 'world'>[] = [
 export const CARDS: Card[] = [
   ...WORLD_1.map((c) => ({ ...c, world: 1 as const })),
   ...WORLD_2.map((c) => ({ ...c, world: 2 as const })),
+  ...WORLD_3.map((c) => ({ ...c, world: 3 as const })),
+  ...WORLD_4.map((c) => ({ ...c, world: 4 as const })),
+  ...WORLD_5.map((c) => ({ ...c, world: 5 as const })),
+  ...NATIVE,
 ];
 
 export const cardById = (id: string) => CARDS.find((c) => c.id === id);

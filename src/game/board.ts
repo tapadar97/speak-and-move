@@ -77,7 +77,7 @@ export function drawCard(
   rng: () => number = Math.random,
 ): Card {
   const place = placeAt(world, square);
-  const pool = CARDS.filter((c) => c.world === world && c.level === level);
+  const pool = CARDS.filter((c) => c.world === world && c.level === level && !c.native);
   const fresh = pool.filter((c) => !recent.includes(c.id));
   const here = fresh.filter((c) => c.place === place);
   const from = here.length ? here : fresh.length ? fresh : pool;
