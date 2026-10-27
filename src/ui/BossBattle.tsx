@@ -35,8 +35,18 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
   const [hint, setHint] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [shake, setShake] = useState(0);
+  const [confirmExit, setConfirmExit] = useState(false);
   const askedAt = useRef(0);
   const alive = useRef(true);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+
+  // The phone's back button: leave from the intro or end screens, ask first mid-fight.
+  useEffect(() => {
+    const onBack = () => (phaseRef.current === 'intro' || phaseRef.current === 'lost' ? onExit() : setConfirmExit(true));
+    window.addEventListener('sm-back', onBack);
+    return () => window.removeEventListener('sm-back', onBack);
+  }, [onExit]);
 
   const roundIndex = state.queue[0];
   const round = boss.rounds[roundIndex];
@@ -96,9 +106,18 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
     );
   };
 
-  // The round timer.
+  // The round timer. It pauses while the "Leave?" question is open.
+  const pausedAt = useRef(0);
   useEffect(() => {
     if (phase !== 'answer') return;
+    if (confirmExit) {
+      pausedAt.current = Date.now();
+      return;
+    }
+    if (pausedAt.current) {
+      askedAt.current += Date.now() - pausedAt.current;
+      pausedAt.current = 0;
+    }
     const t = window.setInterval(() => {
       const l = ROUND_SECONDS - (Date.now() - askedAt.current) / 1000;
       setLeft(Math.max(0, l));
@@ -109,7 +128,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
     }, 100);
     return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, roundIndex]);
+  }, [phase, roundIndex, confirmExit]);
 
   const answered = (alts: string[]) => {
     if (phase !== 'answer') return;
@@ -188,7 +207,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
             Try again
           </button>
           <button type="button" className="link-btn link-btn--light" onClick={onExit}>
-            Back to the map
+            Back to my journey
           </button>
         </div>
       </div>
@@ -198,7 +217,7 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
   return (
     <div className={`screen boss boss--w${world}`}>
       <header className="boss-top">
-        <button type="button" className="icon-btn" onClick={onExit} aria-label="Leave the battle">
+        <button type="button" className="icon-btn" onClick={() => setConfirmExit(true)} aria-label="Leave the battle">
           ←
         </button>
         <div className="boss-plate">
@@ -274,6 +293,22 @@ export function BossBattle({ world, sound, bangla, onAnswer, onWin, onExit }: Pr
         <p className="bn-line boss-bn" lang="bn">
           দ্রুত উত্তর দিন!
         </p>
+      )}
+      {confirmExit && (
+        <div className="sheet-backdrop" onClick={() => setConfirmExit(false)}>
+          <div className="small-sheet" role="dialog" aria-modal="true" aria-labelledby="boss-exit-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="boss-exit-title">Leave this fight?</h2>
+            <p>The timer is paused. If you leave, this fight won't count.</p>
+            <div className="row">
+              <button type="button" className="btn btn--blue" onClick={() => setConfirmExit(false)}>
+                Keep fighting
+              </button>
+              <button type="button" className="btn btn--go" onClick={onExit}>
+                Leave
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

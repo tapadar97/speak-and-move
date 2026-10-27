@@ -45,6 +45,7 @@ export function PickPlayer({ current, name: initialName, bangla, onDone, onBack 
             type="button"
             role="radio"
             aria-checked={picked === p}
+            aria-label={PLAYERS[p].label}
             className={`pick-card ${picked === p ? 'is-on' : ''}`}
             onClick={() => setPicked(p)}
           >

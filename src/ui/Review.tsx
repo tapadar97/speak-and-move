@@ -31,7 +31,7 @@ export function Review({ ids, mastery, sound, bangla, title = 'Review', why, onR
           {right} of {queue.length} right first try. Phrases you missed come back tomorrow.
         </p>
         <button type="button" className="btn btn--go btn--big" onClick={onExit}>
-          Back to the map
+          Done
         </button>
       </div>
     );
@@ -41,7 +41,7 @@ export function Review({ ids, mastery, sound, bangla, title = 'Review', why, onR
   return (
     <div className="screen review">
       <header className="review__head">
-        <button type="button" className="icon-btn" onClick={onExit} aria-label="Back to the map">
+        <button type="button" className="icon-btn" onClick={onExit} aria-label="Back">
           ←
         </button>
         <div>

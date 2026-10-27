@@ -66,6 +66,15 @@ export function Game({ world, stats, mastery, yourLevel, sound, bangla, bossBeat
   playersRef.current = players;
   const skill = worldById(world).rivalSkill!;
 
+  // The phone's back button asks before leaving, like the ← button.
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  useEffect(() => {
+    const onBack = () => (phaseRef.current === 'over' ? onExit() : setConfirmExit(true));
+    window.addEventListener('sm-back', onBack);
+    return () => window.removeEventListener('sm-back', onBack);
+  }, [onExit]);
+
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -332,7 +341,7 @@ function RaceEnd({ won, summary, boss, bossBeaten, onBoss, onRematch, onExit }: 
               Fight {boss}!
             </button>
             <button type="button" className="link-btn" onClick={onExit}>
-              Later. Back to the map
+              Later. Back to my journey
             </button>
           </>
         ) : (
@@ -341,7 +350,7 @@ function RaceEnd({ won, summary, boss, bossBeaten, onBoss, onRematch, onExit }: 
               {won ? 'Race again' : 'Rematch'}
             </button>
             <button type="button" className="link-btn" onClick={onExit}>
-              Back to the map
+              Back to my journey
             </button>
           </>
         )}

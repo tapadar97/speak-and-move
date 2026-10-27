@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { loadManifest } from '../speech';
 import { PlayerArt } from './kit';
+import { SettingsSheet } from './SettingsSheet';
 
 interface Props {
   coins: number;
@@ -64,28 +65,7 @@ export function Title({ coins, sound, bangla, onPlay, onToggle, onChangePlayer }
       </div>
 
       {settings && (
-        <div className="sheet-backdrop" onClick={() => setSettings(false)}>
-          <div className="small-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title" onClick={(e) => e.stopPropagation()}>
-            <h2 id="settings-title">Settings</h2>
-            <button type="button" className={`setting ${sound ? 'is-on' : ''}`} onClick={() => onToggle('sound')} aria-pressed={sound}>
-              <span>Voices and sound</span>
-              <span className="setting__state">{sound ? 'On' : 'Off'}</span>
-            </button>
-            <button type="button" className={`setting ${bangla ? 'is-on' : ''}`} onClick={() => onToggle('bangla')} aria-pressed={bangla}>
-              <span>
-                Bangla hints <span lang="bn">(বাংলা)</span>
-              </span>
-              <span className="setting__state">{bangla ? 'On' : 'Off'}</span>
-            </button>
-            <button type="button" className="setting" onClick={onChangePlayer}>
-              <span>Change player or name</span>
-              <span className="setting__state">›</span>
-            </button>
-            <button type="button" className="btn btn--blue" onClick={() => setSettings(false)}>
-              Done
-            </button>
-          </div>
-        </div>
+        <SettingsSheet sound={sound} bangla={bangla} onToggle={onToggle} onChangePlayer={onChangePlayer} onClose={() => setSettings(false)} />
       )}
     </div>
   );

@@ -191,6 +191,9 @@ export function loadManifest(): Promise<Manifest | null> {
 
 if (typeof window !== 'undefined') loadManifest();
 
+/** Ends the clip that is playing now, so nothing waits on it. */
+let finishCurrent: (() => void) | null = null;
+
 function playFile(url: string, rate: number): Promise<boolean> {
   return new Promise((resolve) => {
     const a = new Audio(url);
@@ -198,9 +201,29 @@ function playFile(url: string, rate: number): Promise<boolean> {
     a.playbackRate = rate;
     // Keep the speaker's natural pitch when slowed down.
     a.preservesPitch = true;
-    a.onended = () => resolve(true);
-    a.onerror = () => resolve(false);
-    a.play().catch(() => resolve(false));
+    let guard = 0;
+    let settled = false;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(guard);
+      if (finishCurrent === stop) finishCurrent = null;
+      if (!ok) a.pause();
+      resolve(ok);
+    };
+    const stop = () => done(true);
+    finishCurrent = stop;
+    // A slow connection or a locked screen can stall a clip and never fire "ended".
+    // Never wait forever: give it time to load, then its own length plus a little.
+    guard = window.setTimeout(() => done(false), 8000);
+    a.onloadedmetadata = () => {
+      if (!Number.isFinite(a.duration)) return;
+      window.clearTimeout(guard);
+      guard = window.setTimeout(() => done(true), (a.duration / rate) * 1000 + 2000);
+    };
+    a.onended = () => done(true);
+    a.onerror = () => done(false);
+    a.play().catch(() => done(false));
   });
 }
 
@@ -223,5 +246,6 @@ export function stopSpeaking() {
     current.pause();
     current = null;
   }
+  finishCurrent?.();
   if (canSpeak()) window.speechSynthesis.cancel();
 }

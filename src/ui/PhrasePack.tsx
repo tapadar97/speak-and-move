@@ -72,7 +72,7 @@ export function PhrasePack({ world, sound, bangla, onPhrase, onDone, onExit }: P
             Start learning
           </button>
           <button type="button" className="link-btn" onClick={onExit}>
-            Back to the map
+            Back to my journey
           </button>
         </div>
       </div>
@@ -106,7 +106,7 @@ export function PhrasePack({ world, sound, bangla, onPhrase, onDone, onExit }: P
         <div className="street" />
       </div>
       <header className="review__head">
-        <button type="button" className="icon-btn" onClick={onExit} aria-label="Back to the map">
+        <button type="button" className="icon-btn" onClick={onExit} aria-label="Back to my journey">
           ←
         </button>
         <div>

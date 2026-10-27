@@ -97,7 +97,7 @@ export function Victory({ world, stars, firstClear, before, after, missionCardId
         <p className="victory__soon">More worlds are coming soon: {next ? next.name : 'stay tuned'}!</p>
       )}
       <button type="button" className="btn btn--blue" onClick={onHome}>
-        Map
+        Back to my journey
       </button>
     </div>
   );

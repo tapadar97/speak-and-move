@@ -116,7 +116,7 @@ export function CharacterCard({ stats, before, name, mode, bangla, outfits, onSt
       )}
       {onSettings && (
         <button type="button" className="link-btn" onClick={onSettings}>
-          Settings and title screen
+          ⚙️ Settings
         </button>
       )}
     </div>

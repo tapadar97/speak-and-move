@@ -3544,3 +3544,43 @@ button.w-miss {
   width: 58%;
   height: auto;
 }
+
+/* Daily goal met: a short celebration at the top, above every screen. */
+.goal-toast {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 32px), 420px);
+  z-index: 60;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 2px solid var(--green);
+  border-bottom-width: 4px;
+  border-radius: 18px;
+  background: var(--green-tint);
+  color: var(--green-dark);
+  font-size: 15px;
+  line-height: 1.35;
+  animation: drop-in 260ms ease-out;
+  cursor: pointer;
+}
+
+.goal-toast > span:first-child {
+  font-size: 28px;
+}
+
+@keyframes drop-in {
+  from {
+    transform: translate(-50%, -24px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-toast {
+    animation: none;
+  }
+}

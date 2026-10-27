@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BattleState } from '../game/bosses';
 import { starsFor } from '../game/bosses';
 import { CARDS, type Card, type Level, type WorldId } from '../game/cards';
@@ -20,12 +20,13 @@ import { PhrasePack } from './PhrasePack';
 import { Phrasebook } from './Phrasebook';
 import { PickPlayer } from './PickPlayer';
 import { Review } from './Review';
+import { SettingsSheet } from './SettingsSheet';
 import { Title } from './Title';
 import { Victory } from './Victory';
 
 type Screen =
   | { name: 'title' }
-  | { name: 'pick'; then: 'play' | 'title' }
+  | { name: 'pick'; then: 'play' | 'title' | 'progress' }
   | { name: 'firstday' }
   | { name: 'card'; mode: 'result' | 'view' }
   | { name: 'tab'; tab: Tab }
@@ -43,9 +44,18 @@ function pickMission(world: WorldId, said: string[]): string {
 
 export function App() {
   const [profile, setProfile] = useState<Profile>(loadProfile);
-  const [screen, setScreen] = useState<Screen>({ name: 'title' });
+  // Returning players open straight on their journey; new players see the title screen.
+  const [screen, setScreen] = useState<Screen>(() => (profile.player && profile.stats ? { name: 'tab', tab: 'journey' } : { name: 'title' }));
+  const [settings, setSettings] = useState(false);
+  const [goalToast, setGoalToast] = useState(false);
   const day = today();
   const rank = profile.stats ? rankIndex(profile.stats) : 0;
+  const home: Screen = profile.stats ? { name: 'tab', tab: 'journey' } : { name: 'title' };
+  const isHome = screen.name === 'title' || (screen.name === 'tab' && screen.tab === 'journey');
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+  const homeRef = useRef(home);
+  homeRef.current = home;
 
   useEffect(() => {
     saveProfile(profile);
@@ -53,6 +63,39 @@ export function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [screen.name]);
+
+  // Celebrate the moment today's goal is met (the 30 coins are added in goodAnswer).
+  const goalMet = profile.goalDays.includes(day);
+  const wasMet = useRef(goalMet);
+  useEffect(() => {
+    if (goalMet && !wasMet.current) {
+      setGoalToast(true);
+      const t = window.setTimeout(() => setGoalToast(false), 3500);
+      wasMet.current = true;
+      return () => window.clearTimeout(t);
+    }
+    wasMet.current = goalMet;
+  }, [goalMet]);
+
+  // The phone's back button: leave a screen instead of closing the game.
+  // In a race or boss fight it asks first, like the in-game ← button.
+  useEffect(() => {
+    if (!isHome && history.state?.sm !== 1) history.pushState({ sm: 1 }, '');
+  }, [isHome]);
+  useEffect(() => {
+    const onPop = () => {
+      const s = screenRef.current;
+      setSettings(false);
+      if (s.name === 'race' || s.name === 'boss') {
+        history.pushState({ sm: 1 }, '');
+        window.dispatchEvent(new Event('sm-back'));
+      } else {
+        setScreen(homeRef.current);
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   const update = (fn: (p: Profile) => Profile) => setProfile(fn);
 
@@ -107,7 +150,31 @@ export function App() {
     setScreen({ name: 'boss', world: w, key: Date.now() });
   };
 
-  return <PlayerContext.Provider value={profile.player ?? 'hero'}>{render()}</PlayerContext.Provider>;
+  return (
+    <PlayerContext.Provider value={profile.player ?? 'hero'}>
+      {render()}
+      {settings && (
+        <SettingsSheet
+          sound={profile.sound}
+          bangla={profile.bangla}
+          onToggle={(k) => update((p) => ({ ...p, [k]: !p[k] }))}
+          onChangePlayer={() => {
+            setSettings(false);
+            setScreen({ name: 'pick', then: 'progress' });
+          }}
+          onClose={() => setSettings(false)}
+        />
+      )}
+      {goalToast && (
+        <div className="goal-toast" role="status" onClick={() => setGoalToast(false)}>
+          <span aria-hidden="true">🎉</span>
+          <span>
+            <b>Daily goal done!</b> +30 coins. Your streak is safe today.
+          </span>
+        </div>
+      )}
+    </PlayerContext.Provider>
+  );
 
   function render() {
     switch (screen.name) {
@@ -133,9 +200,17 @@ export function App() {
             bangla={profile.bangla}
             onDone={(player, name) => {
               update((p) => ({ ...p, player, name }));
-              setScreen(screen.then === 'title' ? { name: 'title' } : profile.stats ? { name: 'tab', tab: 'journey' } : { name: 'firstday' });
+              setScreen(
+                screen.then === 'title'
+                  ? { name: 'title' }
+                  : screen.then === 'progress'
+                    ? { name: 'tab', tab: 'progress' }
+                    : profile.stats
+                      ? { name: 'tab', tab: 'journey' }
+                      : { name: 'firstday' },
+              );
             }}
-            onBack={() => setScreen({ name: 'title' })}
+            onBack={() => setScreen(screen.then === 'progress' ? { name: 'tab', tab: 'progress' } : { name: 'title' })}
           />
         );
 
@@ -208,7 +283,7 @@ export function App() {
               outfits={profile.outfits}
               onStart={() => setScreen({ name: 'tab', tab: 'journey' })}
               onRetake={() => setScreen({ name: 'firstday' })}
-              onSettings={() => setScreen({ name: 'title' })}
+              onSettings={() => setSettings(true)}
             />,
           );
         }
