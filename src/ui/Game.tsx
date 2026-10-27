@@ -29,7 +29,7 @@ interface Props {
   sound: boolean;
   bangla: boolean;
   bossBeaten: boolean;
-  onCard: (card: Card, mode: Mode, right: boolean, firstTry: boolean) => void;
+  onCard: (card: Card, mode: Mode, right: boolean, firstTry: boolean, typed: boolean) => void;
   onFinish: (s: RaceSummary) => void;
   onBoss: () => void;
   onRematch: () => void;
@@ -151,7 +151,7 @@ export function Game({ world, stats, mastery, yourLevel, sound, bangla, bossBeat
     const { card: c, mode, level } = card!;
     setCard(null);
     summary.current.attempts++;
-    onCard(c, mode, d.right, d.right && !d.retry);
+    onCard(c, mode, d.right, d.right && !d.retry, d.typed);
     if (d.right) {
       repeats.current = dropRepeat(repeats.current, c.id);
       if (!d.retry) summary.current.firstTry++;

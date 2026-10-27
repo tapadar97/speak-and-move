@@ -3584,3 +3584,151 @@ button.w-miss {
     animation: none;
   }
 }
+
+/* Journey: one clear next action above the fold. */
+.up-next {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  align-items: center;
+  margin: 14px 0 4px;
+  padding: 16px;
+  border: 2px solid var(--brand);
+  border-bottom-width: 4px;
+  border-radius: 20px;
+  background: var(--brand-tint);
+}
+
+.up-next__icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--surface);
+  font-size: 28px;
+}
+
+.up-next__eyebrow {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-ink);
+}
+
+.up-next__title {
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.up-next__why {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.up-next__go {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+}
+
+/* World header: compact, so the next action stays on the first screen. */
+.journey .level {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  padding: 18px 0 8px;
+}
+
+.journey .level__art {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  margin: 0;
+}
+
+.journey .level__img {
+  max-width: 72px;
+  max-height: 72px;
+}
+
+.journey .level .art--fallback {
+  width: 72px;
+  font-size: 18px;
+}
+
+.journey .level__badge {
+  position: static;
+  transform: none;
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 11px;
+  border-radius: 8px;
+}
+
+.journey .level__title {
+  font-size: 19px;
+  margin-top: 4px;
+}
+
+.journey .level__about {
+  font-size: 14px;
+}
+
+/* First mic tap: why the game listens, before the browser asks. */
+.mic-primer {
+  text-align: center;
+}
+
+.mic-primer__icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--brand);
+}
+
+.mic-primer__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.mic-help {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--soft);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+/* After a typed answer: a gentle push back to speaking. */
+.say-nudge {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--brand-tint);
+  color: var(--brand-ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.title-promise {
+  position: relative;
+  margin-top: 10px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}

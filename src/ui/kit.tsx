@@ -77,6 +77,96 @@ export const ERROR_TEXT: Record<ListenError, string> = {
   other: 'Something went wrong with the mic. Try again, or type your answer.',
 };
 
+/* ---------- Mic permission: explain before the browser asks ---------- */
+
+const MIC_KEY = 'speak-and-move.mic-ok';
+
+// Players who already allowed the mic never need the explainer.
+if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+  navigator.permissions
+    .query({ name: 'microphone' as PermissionName })
+    .then((r) => {
+      if (r.state === 'granted') localStorage.setItem(MIC_KEY, '1');
+    })
+    .catch(() => {
+      /* Safari and older browsers can't tell; the explainer shows once */
+    });
+}
+
+function micExplained(): boolean {
+  try {
+    return localStorage.getItem(MIC_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The first time you tap a mic, a short sheet says why the game listens and that
+ * the browser will ask next. A cold "Allow microphone?" pop-up is easy to refuse,
+ * and a refused mic is hard to turn back on.
+ */
+function useMicPrimer(onType: () => void) {
+  const [pending, setPending] = useState<(() => void) | null>(null);
+  const guard = (start: () => void) => (micExplained() ? start() : setPending(() => start));
+  const sheet = pending && (
+    <div className="sheet-backdrop" onClick={() => setPending(null)}>
+      <div className="small-sheet mic-primer" role="dialog" aria-modal="true" aria-labelledby="mic-primer-title" onClick={(e) => e.stopPropagation()}>
+        <span className="mic-primer__icon" aria-hidden="true">
+          <MicIcon />
+        </span>
+        <h2 id="mic-primer-title">Speak out loud</h2>
+        <p>This game listens to check your English. Speaking, not typing, is what makes you better.</p>
+        <p>
+          Next, your browser asks to use the microphone. Tap <b>Allow</b>.
+        </p>
+        <p className="fine">The game doesn't record or keep your voice.</p>
+        <button
+          type="button"
+          className="btn btn--go btn--big"
+          onClick={() => {
+            try {
+              localStorage.setItem(MIC_KEY, '1');
+            } catch {
+              /* private mode: ask again next time */
+            }
+            const start = pending;
+            setPending(null);
+            start();
+          }}
+        >
+          OK, turn on the mic
+        </button>
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => {
+            setPending(null);
+            onType();
+          }}
+        >
+          Type for now
+        </button>
+      </div>
+    </div>
+  );
+  return { guard, sheet };
+}
+
+const IS_IOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+/** How to turn a blocked mic back on, for the phone you have. */
+function MicHelp() {
+  return (
+    <p className="mic-help">
+      <b>To turn the mic back on:</b>{' '}
+      {IS_IOS
+        ? 'open the iPhone Settings app › Safari › Microphone › Allow. Then reload this page.'
+        : 'tap the icon left of the web address › Permissions › Microphone › Allow. Then reload this page.'}
+    </p>
+  );
+}
+
 export function buzz(pattern: number | number[]) {
   try {
     navigator.vibrate?.(pattern);
@@ -102,6 +192,7 @@ export function SpeakInput({ onAnswer, disabled = false, ring, idleLabel = 'Tap 
   const [typing, setTyping] = useState(!canListen());
   const [typed, setTyped] = useState('');
   const stopRef = useRef<() => void>(() => {});
+  const primer = useMicPrimer(() => setTyping(true));
 
   useEffect(() => () => stopRef.current(), []);
   useEffect(() => {
@@ -114,6 +205,10 @@ export function SpeakInput({ onAnswer, disabled = false, ring, idleLabel = 'Tap 
       stopRef.current();
       return;
     }
+    primer.guard(start);
+  };
+
+  const start = () => {
     stopSpeaking();
     setError(null);
     setInterim('');
@@ -161,12 +256,14 @@ export function SpeakInput({ onAnswer, disabled = false, ring, idleLabel = 'Tap 
           </button>
         )}
         {error && <p className="error">{ERROR_TEXT[error]}</p>}
+        {error === 'mic-blocked' && <MicHelp />}
       </form>
     );
   }
 
   return (
     <div className="speak">
+      {primer.sheet}
       <div className="speak__mic-wrap">
         {ring}
         <button
@@ -206,6 +303,7 @@ export function TalkInput({ limit = 30, onDone }: { limit?: number; onDone: (r: 
   const stopRef = useRef<() => void>(() => {});
   const textRef = useRef('');
   const active = useRef(false);
+  const primer = useMicPrimer(() => setState('typing'));
   textRef.current = text;
 
   useEffect(
@@ -281,6 +379,7 @@ export function TalkInput({ limit = 30, onDone }: { limit?: number; onDone: (r: 
           Done
         </button>
         {error && <p className="error">{ERROR_TEXT[error]}</p>}
+        {error === 'mic-blocked' && <MicHelp />}
       </form>
     );
   }
@@ -289,7 +388,8 @@ export function TalkInput({ limit = 30, onDone }: { limit?: number; onDone: (r: 
     <div className="talk">
       {state === 'ready' ? (
         <>
-          <button type="button" className="mic" onClick={begin} aria-label="Start talking">
+          {primer.sheet}
+          <button type="button" className="mic" onClick={() => primer.guard(begin)} aria-label="Start talking">
             <MicIcon />
           </button>
           <p className="mic-label">Tap and talk for up to {limit} seconds</p>

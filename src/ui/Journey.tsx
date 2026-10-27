@@ -20,6 +20,12 @@ interface Props {
   onProfile: () => void;
 }
 
+/** Phrases you have at least met once (Seen or better), out of the world's total. */
+export function worldLearned(p: Profile, w: WorldId): { learned: number; total: number } {
+  const cards = CARDS.filter((c) => c.world === w);
+  return { learned: cards.filter((c) => stepOf(p.mastery, c.id) >= 1).length, total: cards.length };
+}
+
 const DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
 /** How far through a world's phrases you are: average mastery, 0–100. */
@@ -68,7 +74,8 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
   const info = WORLDS[world - 1];
   const prog = profile.worlds[world];
   const boss = BOSSES[world];
-  const pct = worldPercent(profile, world);
+  const { learned, total } = worldLearned(profile, world);
+  const mastered = worldPercent(profile, world);
   const streak = liveStreak(profile, day);
   const good = goodToday(profile, day);
   const due = dueItems(profile.review, day).length;
@@ -77,6 +84,17 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
   const bossDone = prog.stars > 0;
   // The single next step is marked START, like a lesson path.
   const next = !packDone ? 'learn' : !raceDone ? 'race' : !bossDone ? 'boss' : null;
+
+  // One clear action at the top of the screen: what to do now, why, and how long.
+  const upNext = !packDone
+    ? { title: 'Learn 8 phrases', why: `Hear and say the phrases ${boss.name} will test you on.`, time: '3 min', icon: '📒', go: () => onLearn(world) }
+    : !raceDone
+      ? { title: 'Race Maya', why: 'Use your new phrases in real situations. Say it right to move.', time: '5 min', icon: '🏁', go: () => onRace(world) }
+      : !bossDone
+        ? { title: `Beat ${boss.name}`, why: 'Answer fast, like in a real New York line. Hints if you need them.', time: '3 min', icon: boss.icon, go: () => onBoss(world) }
+        : due
+          ? { title: `Review ${due} phrase${due > 1 ? 's' : ''}`, why: 'You missed these before. Saying them again now makes them stick.', time: '2 min', icon: '🔁', go: onReview }
+          : { title: 'Race again', why: `${mastered}% mastered. Every right answer moves a phrase up a star.`, time: '5 min', icon: '🏁', go: () => onRace(world) };
 
   return (
     <div className="screen journey">
@@ -88,11 +106,13 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
               <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </button>
-          <div className="j-progress" aria-label={`${pct}% of ${info.name} mastered`}>
+          <div className="j-progress" aria-label={`${learned} of ${total} phrases learned in ${info.name}`}>
             <span className="j-progress__bar">
-              <span style={{ width: `${Math.max(pct, 3)}%` }} />
+              <span style={{ width: `${Math.max((learned / total) * 100, 3)}%` }} />
             </span>
-            <span className="j-progress__pct">{pct}%</span>
+            <span className="j-progress__pct">
+              {learned}/{total} phrases
+            </span>
           </div>
         </div>
         <span className="j-streak" aria-label={`${streak} day streak`}>
@@ -127,13 +147,31 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
         {good >= DAILY_GOAL ? 'Daily goal done. See you tomorrow!' : `Today: ${good} of ${DAILY_GOAL} good answers`}
       </p>
 
+      <section className="up-next" aria-labelledby="up-next-title">
+        <span className="up-next__icon" aria-hidden="true">
+          {upNext.icon}
+        </span>
+        <div className="up-next__text">
+          <p className="up-next__eyebrow">Up next · about {upNext.time}</p>
+          <h2 id="up-next-title" className="up-next__title">
+            {upNext.title}
+          </h2>
+          <p className="up-next__why">{upNext.why}</p>
+        </div>
+        <button type="button" className="btn btn--go up-next__go" onClick={upNext.go}>
+          Start
+        </button>
+      </section>
+
       <section className="level">
         <div className="level__art">
           <Art name={info.art} fallback={info.icon} className="level__img" />
-          <span className="level__badge">WORLD {world}</span>
         </div>
-        <h1 className="level__title">{info.goal}</h1>
-        <p className="level__about">{info.about}</p>
+        <div>
+          <span className="level__badge">WORLD {world}</span>
+          <h1 className="level__title">{info.goal}</h1>
+          <p className="level__about">{info.about}</p>
+        </div>
       </section>
 
       <div className="tiles">
@@ -195,7 +233,7 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
                   <span>
                     {w.icon} {w.name}
                   </span>
-                  <span className="setting__state">{!playable ? 'Soon' : !open ? '🔒' : `${worldPercent(profile, id)}%`}</span>
+                  <span className="setting__state">{!playable ? 'Soon' : !open ? '🔒' : `${worldLearned(profile, id).learned}/${worldLearned(profile, id).total}`}</span>
                 </button>
               );
             })}

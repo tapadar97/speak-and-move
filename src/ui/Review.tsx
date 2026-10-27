@@ -10,7 +10,7 @@ interface Props {
   bangla: boolean;
   title?: string;
   why?: string;
-  onResult: (card: Card, mode: Mode, right: boolean, firstTry: boolean) => void;
+  onResult: (card: Card, mode: Mode, right: boolean, firstTry: boolean, typed: boolean) => void;
   onExit: () => void;
 }
 
@@ -62,7 +62,7 @@ export function Review({ ids, mastery, sound, bangla, title = 'Review', why, onR
         onDone={(d) => {
           const first = d.right && !d.retry;
           if (first) setRight((n) => n + 1);
-          onResult(card, mode, d.right, first);
+          onResult(card, mode, d.right, first, d.typed);
           setI((n) => n + 1);
         }}
       />

@@ -105,23 +105,27 @@ export function App() {
     return { ...p, daily: g.daily, streak: g.streak, goalDays: g.goalDays, coins: p.coins + (g.goalJustMet ? 30 : 0) };
   };
 
-  /** One answered card anywhere: mastery, stats, review deck and daily goal. */
-  const answered = (p: Profile, card: Card, mode: Mode, right: boolean, firstTry: boolean): Profile => {
+  /** One answered card anywhere: mastery, stats, review deck and daily goal. Typing never grows Voice. */
+  const answered = (p: Profile, card: Card, mode: Mode, right: boolean, firstTry: boolean, typed = false): Profile => {
+    const stat = MODE_STAT[mode];
     let next: Profile = {
       ...p,
       mastery: afterAnswer(p.mastery, card.id, right, firstTry),
-      stats: right && p.stats ? grow(p.stats, MODE_STAT[mode], firstTry) : p.stats,
+      stats: right && p.stats && !(typed && stat === 'voice') ? grow(p.stats, stat, firstTry) : p.stats,
       review: right ? p.review : addMistake(p.review, card.id, day),
     };
     if (firstTry) next = goodAnswer(next);
     return next;
   };
 
-  /** The ▶ button: the next step in your current world (learn → race → boss → race again). */
+  /** The ▶ button, same as the Journey's "Up next": learn → race → boss, then review if due, else race again. */
   const playNext = () => {
     const w = currentWorld(profile, rank);
+    const due = dueItems(profile.review, day);
     if (!profile.packDone[w]) setScreen({ name: 'pack', world: w });
-    else if (profile.worlds[w].raceWins > 0 && profile.worlds[w].stars === 0) boss(w);
+    else if (profile.worlds[w].raceWins === 0) race(w);
+    else if (profile.worlds[w].stars === 0) boss(w);
+    else if (due.length) setScreen({ name: 'review', ids: due.map((i) => i.cardId) });
     else race(w);
   };
 
@@ -324,9 +328,9 @@ export function App() {
             sound={profile.sound}
             bangla={profile.bangla}
             bossBeaten={profile.worlds[w].stars > 0}
-            onCard={(card, mode, right, firstTry) =>
+            onCard={(card, mode, right, firstTry, typed) =>
               update((p) => ({
-                ...answered(p, card, mode, right, firstTry),
+                ...answered(p, card, mode, right, firstTry, typed),
                 attempts: p.attempts + 1,
                 firstTry: p.firstTry + (firstTry ? 1 : 0),
               }))
@@ -410,9 +414,9 @@ export function App() {
             bangla={profile.bangla}
             title={screen.title}
             why={screen.why}
-            onResult={(card, mode, right, firstTry) =>
+            onResult={(card, mode, right, firstTry, typed) =>
               update((p) => {
-                const next = answered(p, card, mode, right, firstTry);
+                const next = answered(p, card, mode, right, firstTry, typed);
                 // A phrase already in the review deck moves along its 1/3/7-day schedule.
                 return p.review[card.id] ? { ...next, review: reviewed(p.review, card.id, firstTry, day) } : next;
               })

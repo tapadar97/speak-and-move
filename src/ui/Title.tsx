@@ -42,6 +42,10 @@ export function Title({ coins, sound, bangla, onPlay, onToggle, onChangePlayer }
           <span className="logo__amp">&amp;</span>Move
         </span>
       </h1>
+      <p className="title-promise">
+        Speak real New York English.
+        <br />A few minutes a day, out loud.
+      </p>
 
       <div className="title-hero">
         <PlayerArt pose="wave" className="title-hero__art" />

@@ -3,13 +3,15 @@ import { LEVEL_NAME, PLACES, STEPS, type Card } from '../game/cards';
 import { REPLIES } from '../game/learning';
 import { matchSpeech, normalize, type MatchResult } from '../game/match';
 import { MAX_STEP, MODE_NAME, STEP_NAME, expected, gapText, situationOf, whyOf, type Mode } from '../game/mastery';
-import { canSpeak, sayPhrase, speak, stopSpeaking } from '../speech';
+import { canListen, canSpeak, sayPhrase, speak, stopSpeaking } from '../speech';
 import { SpeakInput, SpeakerIcon, buzz } from './kit';
 
 export interface CardDone {
   right: boolean;
   /** Right only on the second try. */
   retry: boolean;
+  /** Typed, not spoken: it doesn't train your Voice skill. */
+  typed: boolean;
 }
 
 interface Props {
@@ -122,7 +124,7 @@ export function CardSheet({ card, mode, step, context, secondChance = false, sou
     setPractising(null);
   };
 
-  const finish = (right: boolean) => onDone({ right, retry: right && attempt === 2 });
+  const finish = (right: boolean) => onDone({ right, retry: right && attempt === 2, typed });
 
   const right = result?.pass ?? false;
   const exact = result?.words.every((w) => w.ok) ?? false;
@@ -243,6 +245,9 @@ export function CardSheet({ card, mode, step, context, secondChance = false, sou
                 <p className="heard">
                   {typed ? 'You wrote' : 'I heard'}: “{result.heard}”
                 </p>
+              )}
+              {typed && canListen() && (
+                <p className="say-nudge">🎤 Next time, say it out loud. Only speaking grows your Voice skill.</p>
               )}
               {mode === 'answer' && (
                 <p className="heard">
