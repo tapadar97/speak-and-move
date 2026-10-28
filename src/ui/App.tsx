@@ -5,13 +5,14 @@ import { CARDS, WORLD_IDS, type Card, type Level, type WorldId } from '../game/c
 import { EXPERT, LADDER, ladderRank } from '../game/ladder';
 import { MODE_STAT, afterAnswer, type Mode } from '../game/mastery';
 import { scoreFirstDay } from '../game/firstday';
-import { countGood, currentWorld, isUnlocked, loadProfile, saveProfile, type Profile } from '../game/profile';
+import { countGood, currentWorld, goodToday, isUnlocked, liveStreak, loadProfile, saveProfile, type Profile } from '../game/profile';
 import { addMistake, dueItems, reviewed, today } from '../game/review';
 import { grow, rankIndex, type Stats } from '../game/stats';
 import { WORLDS } from '../game/worlds';
 import { BossBattle } from './BossBattle';
 import { CharacterCard } from './CharacterCard';
 import { FirstDay } from './FirstDay';
+import { GoalDone } from './GoalDone';
 import { Game, type RaceSummary } from './Game';
 import { PlayerContext } from './kit';
 import { Journey } from './Journey';
@@ -22,6 +23,7 @@ import { Phrasebook } from './Phrasebook';
 import { PickPlayer } from './PickPlayer';
 import { Review } from './Review';
 import { SettingsSheet } from './SettingsSheet';
+import { Streak } from './Streak';
 import { Title } from './Title';
 import { Victory } from './Victory';
 
@@ -44,7 +46,8 @@ type Screen =
       after: Stats | null;
     }
   | { name: 'review'; ids: string[]; title?: string; why?: string }
-  | { name: 'pack'; world: WorldId; native?: boolean };
+  | { name: 'pack'; world: WorldId; native?: boolean }
+  | { name: 'streak' };
 
 /** A phrase you said right, to use in real life; any easy card of the world if none. */
 function pickMission(world: WorldId, said: string[]): string {
@@ -58,6 +61,8 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(() => (profile.player && profile.stats ? { name: 'tab', tab: 'journey' } : { name: 'title' }));
   const [settings, setSettings] = useState(false);
   const [goalToast, setGoalToast] = useState(false);
+  // The full celebration waits until you are back on the journey.
+  const [celebrate, setCelebrate] = useState(false);
   const day = today();
   const rank = profile.stats ? rankIndex(profile.stats) : 0;
   const home: Screen = profile.stats ? { name: 'tab', tab: 'journey' } : { name: 'title' };
@@ -80,6 +85,7 @@ export function App() {
   useEffect(() => {
     if (goalMet && !wasMet.current) {
       setGoalToast(true);
+      setCelebrate(true);
       const t = window.setTimeout(() => setGoalToast(false), 3500);
       wasMet.current = true;
       return () => window.clearTimeout(t);
@@ -128,7 +134,7 @@ export function App() {
     return next;
   };
 
-  /** The ▶ button, same as the Journey's "Up next": learn → race → boss, then review if due, else race again. */
+  /** "Start today's lesson" on the streak screen, same as the Journey's "Up next": learn → race → boss, then review if due, else race again. */
   const playNext = () => {
     const w = currentWorld(profile, rank);
     const due = dueItems(profile.review, day);
@@ -143,7 +149,7 @@ export function App() {
   const withTabs = (tab: Tab, page: React.ReactNode) => (
     <>
       {page}
-      <TabBar active={tab} missionBadge={!!profile.mission} onTab={(t) => setScreen({ name: 'tab', tab: t })} onPlay={playNext} />
+      <TabBar active={tab} missionBadge={!!profile.mission} onTab={(t) => setScreen({ name: 'tab', tab: t })} />
     </>
   );
 
@@ -183,7 +189,10 @@ export function App() {
           onClose={() => setSettings(false)}
         />
       )}
-      {goalToast && (
+      {celebrate && screen.name === 'tab' && screen.tab === 'journey' && (
+        <GoalDone good={goodToday(profile, day)} streak={liveStreak(profile, day)} onContinue={() => setCelebrate(false)} />
+      )}
+      {goalToast && !isHome && (
         <div className="goal-toast" role="status" onClick={() => setGoalToast(false)}>
           <span aria-hidden="true">🎉</span>
           <span>
@@ -277,6 +286,7 @@ export function App() {
               onReview={() => setScreen({ name: 'review', ids: dueItems(profile.review, day).map((i) => i.cardId) })}
               onRecheck={() => setScreen({ name: 'firstday' })}
               onProfile={() => setScreen({ name: 'tab', tab: 'progress' })}
+              onStreak={() => setScreen({ name: 'streak' })}
             />,
           );
         }
@@ -484,6 +494,8 @@ export function App() {
           />
         );
 
+      case 'streak':
+        return <Streak profile={profile} day={day} onStart={playNext} onClose={() => setScreen(home)} />;
     }
   }
 }

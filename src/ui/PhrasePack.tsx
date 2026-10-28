@@ -5,7 +5,9 @@ import { NATIVE_PACKS, PACKS } from '../game/learning';
 import { matchSpeech, type MatchResult } from '../game/match';
 import { situationOf } from '../game/mastery';
 import { sayPhrase, stopSpeaking } from '../speech';
-import { Art, SpeakInput, SpeakerIcon, buzz } from './kit';
+import { WORLDS } from '../game/worlds';
+import { MicIcon, SpeakInput, SpeakerIcon, buzz } from './kit';
+import { Chevron, DeliScene } from './scene';
 
 interface Props {
   world: WorldId;
@@ -54,37 +56,81 @@ export function PhrasePack({ world, native = false, sound, bangla, onPhrase, onD
   };
 
   if (i < 0) {
+    const preview = ids.map((id) => cardById(id)!);
     return (
-      <div className="screen pack-screen">
-        <div className="sky-scene" aria-hidden="true">
-          <div className="skyline" />
-          <div className="street" />
+      <div className="screen lesson-screen">
+        <div className="lesson-hero">
+          <DeliScene />
+          <button type="button" className="icon-btn lesson-hero__back" onClick={onExit} aria-label="Back to my journey">
+            ←
+          </button>
+          <p className="talk-bubble talk-bubble--1">{preview[0].target}</p>
+          <p className="talk-bubble talk-bubble--2">{preview[1].target}</p>
         </div>
-        <div className="intro-card">
+        <ol className="lesson-steps" aria-label="How it works">
+          <li className="is-on">
+            <SpeakerIcon /> Listen
+          </li>
+          <li aria-hidden="true">
+            <Chevron />
+          </li>
+          <li>
+            <MicIcon size={22} /> Speak
+          </li>
+          <li aria-hidden="true">
+            <Chevron />
+          </li>
+          <li>
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 20V13M12 20V8M18 20V4" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+            Feedback
+          </li>
+        </ol>
+        <div className="lesson-head">
           <p className="eyebrow">
             World {world} · {native ? 'Native round' : 'Phrase Pack'}
           </p>
-          <h1 className="display">{native ? 'Talk like a local' : 'Learn before you play'}</h1>
-          {native ? (
-            <p>
-              8 phrases real New Yorkers say: slang, short answers, real speed. Learn them, then face <strong>{boss.name}</strong> with no hints and only 12 seconds.
-            </p>
-          ) : (
-            <p>
-              8 phrases you'll need here. Hear each one, then say it once. You'll use the first 6 to beat <strong>{boss.name}</strong>.
-            </p>
-          )}
+          <h1 className="lesson-title">{native ? 'Talk like a local' : WORLDS[world - 1].goal}</h1>
+          <p className="lesson-why">
+            {native
+              ? `8 phrases real New Yorkers say, at real speed. Then face ${boss.name}: no hints, 12 seconds.`
+              : `Hear each phrase, then say it out loud. You'll use them to beat ${boss.name}.`}
+          </p>
           {bangla && (
-            <p className="bn-line" lang="bn">
+            <p className="lesson-why" lang="bn">
               {native ? 'নিউ ইয়র্কের মানুষ যেভাবে কথা বলে, সেই ৮টা বাক্য শিখুন।' : 'খেলার আগে ৮টা বাক্য শিখে নিন। শুনুন, তারপর একবার বলুন।'}
             </p>
           )}
-          <Art name={boss.art} fallback={boss.icon} className="pack-boss" />
-          <button type="button" className="btn btn--go btn--big" onClick={next}>
-            Start learning
-          </button>
-          <button type="button" className="link-btn" onClick={onExit}>
-            Back to my journey
+        </div>
+        <ul className="lesson-list">
+          {preview.map((c, n) => (
+            <li key={c.id} className="lesson-row">
+              <span className="lesson-row__text">
+                {c.target}
+                {bangla && (
+                  <span className="lesson-row__bn" lang="bn">
+                    {c.bn}
+                  </span>
+                )}
+              </span>
+              <button type="button" className="round-btn round-btn--play" onClick={() => sayPhrase(c.id, c.target, 'card', speed)} aria-label={`Hear: ${c.target}`}>
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 4.5v15l12.5-7.5z" fill="currentColor" />
+                </svg>
+              </button>
+              <button type="button" className="round-btn round-btn--mic" onClick={() => setI(n)} aria-label={`Practise: ${c.target}`}>
+                <MicIcon size={22} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="lesson-cta">
+          <button type="button" className="btn btn--go btn--big btn--split" onClick={next}>
+            <span className="btn__mic" aria-hidden="true">
+              <MicIcon size={20} />
+            </span>
+            Start speaking <Chevron />
           </button>
         </div>
       </div>

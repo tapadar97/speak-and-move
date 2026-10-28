@@ -3,10 +3,11 @@ import { BOSSES, NATIVE_BOSSES } from '../game/bosses';
 import { CARDS, type WorldId } from '../game/cards';
 import { MAX_STEP, stepOf } from '../game/mastery';
 import { LADDER, ladderRank, nextRung } from '../game/ladder';
-import { DAILY_GOAL, goodToday, isUnlocked, liveStreak, nativeOpen, recheckDue, weekDays, type Profile } from '../game/profile';
+import { DAILY_GOAL, goodToday, isUnlocked, liveStreak, nativeOpen, recheckDue, type Profile } from '../game/profile';
 import { dueItems } from '../game/review';
 import { WORLDS, isPlayable } from '../game/worlds';
-import { Art, PlayerArt } from './kit';
+import { MicIcon } from './kit';
+import { BlockScene, Check, Chevron, Flame, Lock } from './scene';
 
 interface Props {
   profile: Profile;
@@ -21,6 +22,7 @@ interface Props {
   onReview: () => void;
   onRecheck: () => void;
   onProfile: () => void;
+  onStreak: () => void;
 }
 
 /** Phrases you have at least met once (Seen or better), out of the world's total. */
@@ -29,8 +31,6 @@ export function worldLearned(p: Profile, w: WorldId): { learned: number; total: 
   return { learned: cards.filter((c) => stepOf(p.mastery, c.id) >= 1).length, total: cards.length };
 }
 
-const DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-
 /** How far through a world's phrases you are: average mastery, 0–100. */
 export function worldPercent(p: Profile, w: WorldId): number {
   const cards = CARDS.filter((c) => c.world === w);
@@ -38,40 +38,7 @@ export function worldPercent(p: Profile, w: WorldId): number {
   return Math.round((total / (cards.length * MAX_STEP)) * 100);
 }
 
-interface TileProps {
-  label: string;
-  art: React.ReactNode;
-  tone: 'sun' | 'sky' | 'coral' | 'lilac' | 'mint';
-  state?: 'done' | 'locked' | 'next' | null;
-  badge?: string;
-  onClick?: () => void;
-}
-
-function Tile({ label, art, tone, state = null, badge, onClick }: TileProps) {
-  const locked = state === 'locked';
-  return (
-    <button type="button" className={`tile ${state ? `is-${state}` : ''}`} onClick={locked ? undefined : onClick} disabled={locked}>
-      <span className={`tile__art tile__art--${tone}`}>
-        {art}
-        {state === 'done' && (
-          <span className="tile__check" aria-label="Done">
-            ✓
-          </span>
-        )}
-        {locked && (
-          <span className="tile__lock" aria-label="Locked">
-            🔒
-          </span>
-        )}
-        {badge && <span className="tile__badge">{badge}</span>}
-        {state === 'next' && <span className="tile__next">START</span>}
-      </span>
-      <span className="tile__label">{label}</span>
-    </button>
-  );
-}
-
-export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, onNative, onReview, onRecheck, onProfile }: Props) {
+export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, onNative, onReview, onRecheck, onProfile, onStreak }: Props) {
   const [world, setWorld] = useState<WorldId>(current);
   const [picking, setPicking] = useState(false);
   const info = WORLDS[world - 1];
@@ -108,56 +75,68 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
           ? { title: `Review ${due} phrase${due > 1 ? 's' : ''}`, why: 'You missed these before. Saying them again now makes them stick.', time: '2 min', icon: '🔁', go: onReview }
           : { title: 'Race again', why: `${mastered}% mastered. Every right answer moves a phrase up a star.`, time: '5 min', icon: '🏁', go: () => onRace(world) };
 
+  type Step = { key: string; label: string; done: boolean; locked: boolean; badge?: string; go: () => void };
+  const steps: Step[] = [
+    { key: 'learn', label: 'Learn 8 phrases', done: packDone, locked: false, go: () => onLearn(world) },
+    { key: 'race', label: 'Race Maya', done: raceDone, locked: !packDone, badge: prog.raceWins > 1 ? `×${prog.raceWins}` : undefined, go: () => onRace(world) },
+    { key: 'boss', label: `Beat ${boss.name}`, done: bossDone, locked: !raceDone, badge: bossDone ? '★'.repeat(prog.stars) : undefined, go: () => onBoss(world) },
+    { key: 'native', label: 'Native round', done: nativeDone, locked: !nativeOpen(profile, world), badge: nativeDone ? '★'.repeat(prog.nativeStars) : undefined, go: () => onNative(world) },
+  ];
+  if (due) steps.push({ key: 'review', label: `Review ${due} phrase${due > 1 ? 's' : ''}`, done: false, locked: false, go: onReview });
+  if (recheckDue(profile, day)) steps.push({ key: 'recheck', label: 'Weekly check-up', done: false, locked: false, go: onRecheck });
+
   return (
     <div className="screen journey">
-      <header className="j-top">
-        <div className="j-top__left">
-          <button type="button" className="j-world" onClick={() => setPicking(true)} aria-haspopup="dialog">
-            {info.name}
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <header className="j-hero">
+        <div className="j-hero__bar">
+          <button type="button" className="j-unit" onClick={() => setPicking(true)} aria-haspopup="dialog">
+            World {world} · {info.name}
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
           </button>
-          <div className="j-progress" aria-label={`${learned} of ${total} phrases learned in ${info.name}`}>
-            <span className="j-progress__bar">
-              <span style={{ width: `${Math.max((learned / total) * 100, 3)}%` }} />
-            </span>
-            <span className="j-progress__pct">
-              {learned}/{total} phrases
-            </span>
-          </div>
+          <button type="button" className="j-streak" onClick={onStreak} aria-label={`${streak} day streak. Today ${good} of ${DAILY_GOAL}.`}>
+            <Flame />
+            {streak}
+          </button>
         </div>
-        <span className="j-streak" aria-label={`${streak} day streak`}>
-          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-4-1-6 1-9z" fill="#ff5a36" />
-          </svg>
-          {streak}
-        </span>
-        <button type="button" className="j-avatar" onClick={onProfile} aria-label="Your progress">
-          <PlayerArt pose="avatar" />
-        </button>
+        <h1 className="j-hero__title">{info.goal}</h1>
+        <p className="j-hero__count" aria-label={`${learned} of ${total} phrases learned`}>
+          <span className="j-hero__bar-track">
+            <span style={{ width: `${Math.max((learned / total) * 100, 3)}%` }} />
+          </span>
+          {learned}/{total} phrases
+        </p>
+        <BlockScene />
       </header>
 
-      <ol className="week" aria-label={`This week: ${good} of ${DAILY_GOAL} good answers today`}>
-        {weekDays(day).map((d, i) => {
-          const done = profile.goalDays.includes(d);
-          const isToday = d === day;
+      <ol className="path" aria-label="Lessons">
+        <svg className="path__road" viewBox="0 0 100 400" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M70 -10C110 40 20 60 30 110S90 170 60 220 0 290 40 330 80 380 50 420" fill="none" stroke="#efe2cc" strokeWidth="16" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+        {steps.map((s, n) => {
+          const now = s.key === next || ((s.key === 'review' || s.key === 'recheck') && !next && n === 4);
+          const state = now ? 'now' : s.done ? 'done' : s.locked ? 'locked' : 'open';
           return (
-            <li key={d} className={`week__day ${done ? 'is-done' : ''} ${isToday ? 'is-today' : ''}`}>
-              <span
-                className="week__dot"
-                style={isToday && !done ? { ['--p' as string]: Math.min(1, good / DAILY_GOAL) } : undefined}
-              >
-                {done ? '✓' : ''}
-              </span>
-              <span className="week__name">{DAY_NAMES[i]}</span>
+            <li key={s.key} className={`path__step path__step--${n % 4}`}>
+              <button type="button" className={`step is-${state}`} onClick={s.locked ? undefined : s.go} disabled={s.locked} aria-label={`${s.label}${s.done ? ', done' : s.locked ? ', locked' : now ? ', up next' : ''}`}>
+                {now ? (
+                  <span className="step__mic" aria-hidden="true">
+                    <MicIcon size={30} />
+                  </span>
+                ) : (
+                  <span className="step__mark" aria-hidden="true">
+                    {s.done ? <Check /> : s.locked ? <Lock size={16} /> : null}
+                  </span>
+                )}
+                <span className="step__label">{s.label}</span>
+                {s.badge && <span className="step__badge">{s.badge}</span>}
+              </button>
+              {now && <span className="step__sparks" aria-hidden="true" />}
             </li>
           );
         })}
       </ol>
-      <p className="week__note">
-        {good >= DAILY_GOAL ? 'Daily goal done. See you tomorrow!' : `Today: ${good} of ${DAILY_GOAL} good answers`}
-      </p>
 
       <button type="button" className="rank-strip" onClick={onProfile} aria-label={`Rank: ${myRank.name}. ${climb ? `Next: ${climb.rung.name}, ${climb.done} of ${climb.total} done` : 'Top rank'}`}>
         <span className="rank-strip__icon" aria-hidden="true">
@@ -175,76 +154,18 @@ export function Journey({ profile, rank, current, day, onLearn, onRace, onBoss, 
       </button>
 
       <section className="up-next" aria-labelledby="up-next-title">
-        <span className="up-next__icon" aria-hidden="true">
-          {upNext.icon}
-        </span>
         <div className="up-next__text">
-          <p className="up-next__eyebrow">Up next · about {upNext.time}</p>
-          <h2 id="up-next-title" className="up-next__title">
-            {upNext.title}
-          </h2>
-          <p className="up-next__why">{upNext.why}</p>
+          <p id="up-next-title" className="up-next__title">
+            <span className="up-next__eyebrow">Up next:</span> {upNext.title}
+          </p>
+          <p className="up-next__why">
+            {upNext.why} · {upNext.time}
+          </p>
         </div>
         <button type="button" className="btn btn--go up-next__go" onClick={upNext.go}>
-          Start
+          Start <Chevron />
         </button>
       </section>
-
-      <section className="level">
-        <div className="level__art">
-          <Art name={info.art} fallback={info.icon} className="level__img" />
-        </div>
-        <div>
-          <span className="level__badge">WORLD {world}</span>
-          <h1 className="level__title">{info.goal}</h1>
-          <p className="level__about">{info.about}</p>
-        </div>
-      </section>
-
-      <div className="tiles">
-        <Tile
-          label="Learn 8 phrases"
-          tone="sun"
-          art={<span className="tile__emoji">📒</span>}
-          state={packDone ? 'done' : next === 'learn' ? 'next' : null}
-          onClick={() => onLearn(world)}
-        />
-        <Tile
-          label="Race Maya"
-          tone="sky"
-          art={<Art name="maya" fallback="🏁" className="tile__img" />}
-          state={!packDone ? 'locked' : raceDone ? 'done' : next === 'race' ? 'next' : null}
-          badge={prog.raceWins > 1 ? `×${prog.raceWins}` : undefined}
-          onClick={() => onRace(world)}
-        />
-        <Tile
-          label={`Beat ${boss.name}`}
-          tone="coral"
-          art={<Art name={boss.art} fallback={boss.icon} className="tile__img" />}
-          state={!raceDone ? 'locked' : bossDone ? 'done' : next === 'boss' ? 'next' : null}
-          badge={bossDone ? '★'.repeat(prog.stars) : undefined}
-          onClick={() => onBoss(world)}
-        />
-        <Tile
-          label="Native round"
-          tone="mint"
-          art={<span className="tile__emoji">⚡</span>}
-          state={!nativeOpen(profile, world) ? 'locked' : nativeDone ? 'done' : next === 'native' ? 'next' : null}
-          badge={nativeDone ? '★'.repeat(prog.nativeStars) : undefined}
-          onClick={() => onNative(world)}
-        />
-        <Tile
-          label={due ? `Review (${due})` : 'Review'}
-          tone="lilac"
-          art={<span className="tile__emoji">🔁</span>}
-          state={due ? null : 'locked'}
-          onClick={onReview}
-        />
-        {recheckDue(profile, day) && (
-          <Tile label="Weekly check-up" tone="mint" art={<span className="tile__emoji">📈</span>} state="next" onClick={onRecheck} />
-        )}
-      </div>
-      {due === 0 && <p className="week__note">Review opens when a missed phrase is due.</p>}
 
       {picking && (
         <div className="sheet-backdrop" onClick={() => setPicking(false)}>
